@@ -72,7 +72,7 @@ if(not cwc.is_nested()) then
 	if cwc.is_startup() then
 		gears.protected_call(require, "oneshot")
 	else
-		cwc.spawn_with_shell('bash -c "kill -s SIGUSR2 `pidof waybar`"')
+		cwc.spawn_with_shell('killall waybar;waybar')
 	end
 end
 
@@ -139,8 +139,9 @@ cwc.connect_signal("input::new", function(dev)
 		dev.tap_drag       = true
 		dev.dwt            = true
 	elseif dev.name:lower() == "wacom one pen display 13 pen" then
-		dev.tap            = true
-		dev.click_method = 2
+		-- dev.tap            = true
+		-- dev.output_name = "HDMI-A-2"
+		-- dev.click_method = 2
 	end
 end)
 --for _,dev in pairs(cwc.input.get()) do
@@ -218,16 +219,17 @@ local client_rules = {
 cwc.connect_signal("client::map", function(client)
 	-- unmanaged client is a popup/tooltip client in xwayland so lets skip it.
 	if client.unmanaged then return end
-	-- center the client from the screen workarea if its floating or in floating layout.
-	if client.floating then client:center() end
+	-- if client.focus then return end
 
 	local client_rule = client_rules[client.appid:lower()] or client_rules[(client.name or ""):lower()]
 	if(client_rule) then
 		if(client_rule.func) then
-			client_rule.func(client)
+			if client_rule.func(client) then return end
 		else
 			for i,v in pairs(client_rule) do
-				client[i] = v
+				pcall(function()
+					client[i] = v
+				end)
 			end
 		end
 	end
@@ -237,11 +239,16 @@ cwc.connect_signal("client::map", function(client)
 	end
 	-- don't pass focus when the focused client is fullscreen but allow if the parent is the focused
 	-- one. Useful when gaming where an app may restart itself and steal focus.
+	-- local focused = cwc.client.focused()
+	-- if focused and focused.fullscreen and client.parent ~= focused then
+	-- 	client:lower()
+	-- 	return
+	-- end
 	local focused = cwc.client.focused()
-	if focused and focused.fullscreen and client.parent ~= focused then
-		client:lower()
-		return
+	if focused and focused.fullscreen then
+		client.floating = true
 	end
+
 
 	client:raise()
 	client:focus()
@@ -252,6 +259,9 @@ cwc.connect_signal("client::map", function(client)
 		client:move_to_tag(2)
 		client.screen.active_workspace = 2
 	end
+
+	-- center the client from the screen workarea if its floating or in floating layout.
+	if client.floating then client:center() end
 
 end)
 
@@ -279,6 +289,7 @@ cwc.connect_signal("client::focus", function(client)
 	-- should've been hardcoded to the compositor since that's the intuitive behavior
 	-- but it's nice to have option I guess.
 	client:raise()
+	client:set_border_color_rotation(math.round(os.clock() * 10000))
 end)
 
 -- sloppic focus only in tiled client
