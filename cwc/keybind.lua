@@ -481,6 +481,7 @@ kbd.bind(MODKEY, "p", function()
 		'rofi -show drun -font "Hack Nerd Font 10" -icon-theme "Papirus-dark" -show-icons')
 end, { description = "application launcher", group = "launcher" })
 kbd.bind(mod.ALT, "Space", function()
+         
 	cwc.spawn_with_shell('luajit "'..os.getenv('HOME')..'/SRC/dotfiles/lua/appmenuGtk.lua"')
 end, { description = "application launcher", group = "launcher" })
 kbd.bind({mod.ALT, MODKEY}, "Space", function()

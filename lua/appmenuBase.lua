@@ -1,24 +1,38 @@
+#!/bin/lua
+-- This script is not designed to be run alone. Infact all it'll do is generate it's cache
 -- If you want to pass a custom menu:
 --  Replace MODULE.finish(input) to do whatever
 --  Set _G.appmenuList to a table consisting of `{"NAME",EXTRA_VALUES}`
+
+-- Please note, this script was not originally designed to be public so it's a bit of a mess
+
 
 
 local module = {
 
 	output = "",
 	text_buffer = "",
-	allow_markup = false,
-	dmenu_mode = false,
 
 }
 
--- REPLACABLE FUNCTIONS
+-- Values to be changed by frontend, to handle support for certain features
+
+-- This handles communication between appmenuBase and the frontend for keeping track of what the current input text is. 
+--  Use this as a place to store text from user input as much as possible
+module.text_buffer = ""
+
+-- Disables certain markup and output will be filtered to remove any markup that has been generated. 
+--  In the future, this should just prevent markup from being generated at all
+module.allow_markup = false
+
+-- Script will just return the input when module.finish is called and some other things will be disabled
+module.dmenu_mode = false 
 
 -- Function that gets called for any executables
 function module.spawn(cmd)
 	os.execute(cmd .. " &")
 end
--- Gets called after set_text
+-- Gets called after set_text, can be used if you need to manually set a label or something
 function module.apply_text(input)
 	-- STUB
 end
@@ -114,22 +128,16 @@ else
 							if(not elm[1]) then
 								elm[1] = genericName
 							else
-								elm[1] = elm[1] .. '/'.. genericName
+								elm.gen_name = genericName
 
 							end
 						end
 						local description = content:match('Comment=([^\n]+)') or content:match('Description=([^\n]+)')
 						if description then
-							if(not elm[1]) then
-								elm[1] = description
-							else
-								elm[1] = elm[1] .. '('.. description ..')'
-
-							end
+							elm[elm[1] and "desc" or 1] = description
 						end
 					end
 					if(not elm[1]) then elm[1] = path:match('.+/([^%./]+)') or path end
-					-- print(elm[1])
 					cached_list[#cached_list+1] = elm
 				end
 			end
@@ -194,6 +202,18 @@ local xml_entity_names = { ["'"] = "&apos;", ["\""] = "&quot;", ["<"] = "&lt;", 
 function module.xml_escape(text) -- Totally not stolen from awesome
     return text and text:gsub("['&<>\"]", xml_entity_names) or nil
 end
+function module.highlight_match(...)
+	local tbl = {...}
+	if(module.allow_markup) then
+		for i,v in pairs(tbl) do
+			if(i % 2 == 1) then
+				tbl[i] = '<b>'..tbl[i]..'</b>'
+			end
+		end
+	end
+	return table.concat(tbl)
+end
+
 function module.updateInput(input)
 	module.runable = false
 	module.text_buffer = input
@@ -220,60 +240,76 @@ function module.updateInput(input)
 	end
 	while #list > 0 do list[#list]=nil end
 	local index = 1
+	local include_desc = false
+	if(input:sub(1,1) == "?") then
+		input = input:sub(2)
+		include_desc = true
+	end
 	local OLD = input
 	if(input:find(' (%d+)$')) then
 		input,index = input:match('^(.+) (%d+)$')
 		index = tonumber(index) or 1
-		input = input:lower():gsub('%s+$','')
-		if not input then input = OLD end
+		input = input:lower():gsub('%s+$','') or OLD
 	end
 	input = input:gsub(' $','')
 	if #input == 0 or input == " " then return module.set_text() end
-	local search_raw,search,search_simple = input, input:gsub('.',function(a) 
-		return a:upper() == a:lower() and (a..".-") 
-			or ('[%s%s].-'):format(a:upper(),a:lower()) 
-	end),input:lower():gsub('.','%1.-')
+
+	local search_raw,search,search_simple = input, input:gsub('.',
+		function(a) 
+			return a:upper() == a:lower() and ('('..a..")(.-)") 
+				or ('([%s%s])(.-)'):format(a:upper(),a:lower()) 
+		end),input:lower():gsub('.','%1.-')
 	local runables = {}
 	local exec = input:match('[^ ]+')
 	if(executables) then
-		for _,v in ipairs(paths) do
-			v = v..'/'..exec
-			local file = io.open(v,'r')
+		for _,path in ipairs(paths) do
+			path = path..'/'..exec
+			local file = io.open(path,'r')
 			if(file) then
-				local id = #list+1
-				local TEXT = "* <b></b><b>"..v:gsub('<>','\\%1')..'</b> (Executable)'
-				list[id] = TEXT
-				runables[TEXT] = v .. input:sub(#exec+1)
-				-- break
+				local TEXT = "* <b></b><b>"..path:gsub('<>','\\%1')..'</b> (Executable)'
+				list[#list+1] = TEXT
+				runables[TEXT] = path .. input:sub(#exec+1)
 				file:close()
 			end
 		end
 	end
 	exec = exec:lower()
-	local xml = --[[ gears.string.xml_escape or--]] module.allow_markup and module.xml_escape or function(...) return ... end
-	for _,v in ipairs(list_to_search) do
-		-- list[#list+1] = ('%s = %s'):format(tostring(i),tostring(v))
-		i = v[1]
-		local s = i:lower():find(search_simple)
-		-- local foundExec = false
-		-- if not s and type(v[2]) == "string" then
-		-- 	local s = v[2]:lower():find(search)
+	local xml = module.allow_markup and module.xml_escape or function(...) return ... end
+	for i,v in ipairs(list_to_search) do
+		-- i = v[1]
+		local endingString = {'*'}
+		-- local s = i:lower():find(search_simple)
+		local matched_name,matched_generic_name, matched_description
+		matched_name = v[1]:lower():find(search_simple)
+		endingString[#endingString+1] = matched_name and xml(v[1]):gsub(search,module.highlight_match) or xml(v[1])
+		-- if(v.gen_name) then
 
-		-- 	foundExec = true
+		-- 	matched_generic_name = i:lower():find(search_simple)
+		-- 	endingString[#endingString+1] = matched_generic_name and xml(i):gsub(search,module.highlight_match) or xml(i)
 		-- end
-		if(s) then
-			local result = xml(i):gsub(search,"<i><b>%1</b></i>")
-			-- local rs,re=i:lower():find(search_raw) 
-			-- if rs then s,e = rs,re end
-			local id = #list+1
-			-- local xml_i = i
-			local TEXT = ('* %s'):format(result)
-			list[id] = TEXT
-			runables[TEXT] = v
-			-- if(id > 14) then 
-			-- 	break
-			-- end
+		if(v.desc) then
+			matched_description = include_desc and v.desc:lower():find(search_simple)
+			endingString[#endingString+1] = '<span size="small"> ('..(matched_description and xml(v.desc):gsub(search,module.highlight_match) or xml(v.desc)) ..')</span>'
 		end
+
+		if(matched_name or matched_description) then
+			local result = table.concat(endingString,'')
+			list[#list+1] = result
+			runables[result] = v
+		end
+
+
+		-- if(s) then
+		-- 	local result = '*'..xml(i):gsub(search,function(...)
+		-- 		local tbl = {...}
+		-- 		for i,v in pairs(tbl) do
+		-- 			if(i % 2 == 1) then
+		-- 				tbl[i] = '<i><b>'..tbl[i]..'</b></i>'
+		-- 			end
+		-- 		end
+		-- 		return table.concat(tbl)
+		-- 	end)
+		-- end
 	end
 	if #list > 0 then
 		local fullWord,wordparts = {},{}
@@ -283,7 +319,6 @@ function module.updateInput(input)
 				fullWord[#fullWord+1] = v
 			else
 				wordparts[#wordparts+1] = v
-
 			end
 		end
 		local list = {}
@@ -295,22 +330,10 @@ function module.updateInput(input)
 		end) 
 		for i,v in ipairs(fullWord) do list[#list+1] = v end
 		for i,v in ipairs(wordparts) do list[#list+1] = v end
-		-- table.sort(list,function(a,b)
-		-- 	local a_start,a_end = a:find('<b>(.-)</b>')
-		-- 	if not a_start then a_start = 10000 end
-		-- 	if not a_end then a_end = 100000 end
-		-- 	-- local a_diff = a_end-a_start
-
-		-- 	local b_start,b_end = b:find('<b>(.-)</b>')
-		-- 	if not b_start then b_start = 10000 end
-		-- 	if not b_end then b_end = 100000 end
-		-- 	-- local b_diff = b_end-b_start
-		-- 	return b_end > a_end
-		-- end)
 		if(list[index]) then
 			local runable = runables[list[index] or ""]
 			module.runable = runable
-			list[index] = ('<span underline="single">%s - (%s)</span>'):format(list[index]:gsub('(.-)%* ','%1> '),tostring(type(runable) == "string" and runable or runable[2]))
+			list[index] = ('<span underline="single">%s</span>\n<span size="small">\t(%s)</span>'):format(list[index]:gsub('(.-)%* ','%1> '),tostring(type(runable) == "string" and runable or runable[2]))
 		end
 
 		local list,oldList = {},list
@@ -348,6 +371,9 @@ local runLua = function(input)
 end
 module.commands = {
 	{"' '","Normal search", starts_with=" ",
+	},
+	{"?","Search by description AND title",
+		starts_with="?",
 	},
 	{"$, $$, $>","Run shell command, Run shell command and return output here, Run shell command and send notification containing content",
 		starts_with="$",
@@ -551,6 +577,7 @@ function module.finish(input)
 	-- 	title = 'Input was ' .. input
 	-- })
 	local runable=module.runable
+	print(runable)
 	for i,cmd in pairs(module.commands) do
 		if((cmd.starts_with and input:sub(1,#cmd.starts_with) ==cmd.starts_with) or cmd.match and input:find(cmd.match)) then
 			executables=false
