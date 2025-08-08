@@ -1,4 +1,5 @@
 #!/bin/lua
+-- Originally by Superpowers04
 -- This script is not designed to be run alone. Infact all it'll do is generate it's cache
 -- If you want to pass a custom menu:
 --  Replace MODULE.finish(input) to do whatever
@@ -251,8 +252,7 @@ function module.updateInput(input)
 		index = tonumber(index) or 1
 		input = input:lower():gsub('%s+$','') or OLD
 	end
-	input = input:gsub(' $','')
-	input = input:gsub('^ ','')
+	input = input:gsub(' $',''):gsub('^ ','')
 	if #input == 0 or input == " " then return module.set_text() end
 
 	local search_raw,search,search_simple = input, input:gsub('.',

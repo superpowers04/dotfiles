@@ -9,8 +9,6 @@
 -- Replace 1201616832885444789 with whatever your Discord Rich Presence Application ID is. THIS HAS TO BE A STRING
 local APPID = "1201616832885444789"
 local _path = ""
---  The command that gets run when you turn on DRP.
-local commandToRun = 'xterm -e \'luvit "'.._path..'/AwesomeWMRichPresence/Luvit-FakeDRP.lua" "'.._path..'/AwesomeWMRichPresence/Haxe-FakeDRP" '..APPID..'\''
 -- The program that gets killed when you disable DRP
 local proccessToFind = "Haxe-FakeDRP" 
 -- The address used to communicate with the http server
@@ -41,25 +39,16 @@ local pattToDRP = {
 
 -- Actual script
 local module = {}
-enableDRP = false -- I'm too lazy to rewrite my workflow to make this specific to the module, sorry
-
-
 
 local newLine,rn,hex,byte = "\n","\r\n",("%%%02X"),string.byte
 local function char_to_hex(c) return hex:format(byte(c)) end
--- local function DRPNotify(content)
--- 	naughty.notify({preset = naughty.config.presets.normal, title = "Discord Rich Presence", text = content })
--- end
+
 local function urlencode(url)
 	if url == nil then return end
 	return url:gsub(newLine, rn):gsub("([^%w ])", char_to_hex):gsub(" ", "+")
 end
 
 function module.sendToDRP(content)
-	-- if not module.inited then
-	-- 	naughty.notify({preset = naughty.config.presets.critical, title = "Discord Rich Presence", text = "Attempted to sendToDRP before DRP.initDRP was run!" })
-	-- 	return 
-	-- end
 	cwc.spawn_with_shell(command:format(DRP_ENDPOINT.. urlencode(content:gsub('\'','\\\'') )))
 end
 function module.updateDRP(c)

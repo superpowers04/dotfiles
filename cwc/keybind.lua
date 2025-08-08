@@ -728,12 +728,6 @@ screenOptions = function(a)
 	f(value)
 end
 
--- kbd.bind(mod.LOGO, "S", function()
--- -- local
--- 	AsyncSpawn:spawn(
--- 		('echo %q | rofi -dmenu -p _'):format(table.concat(scrOptsArr,'\\\\n'))
--- 		,screenOpts)
--- end, { description = "Configure Screen", group = "launcher" })
 
 kbd.bind(mod.LOGO, "S", function()
 -- local

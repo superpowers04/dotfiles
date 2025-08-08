@@ -1,4 +1,7 @@
 #!/usr/bin/amulet
+
+-- An amulet frontend for lua/appmenuBase.lua. Supersceded by lua/appmenuGtk.lua
+
 local buffer = ""
 local caret = 1
 local caretCharacter = "_"

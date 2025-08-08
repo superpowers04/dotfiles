@@ -1,4 +1,6 @@
 #!/bin/luajit
+-- Originally by Superpowers04, using https://github.com/Miqueas/GTK-Examples/blob/main/lua/gtk3/entry.lua as a template
+
 -- To use, install some form of https://github.com/lgi-devs/lgi and GTK 3
 --  Then bind a keybind to `luajit /path/to/script` This script SHOULD work with both lua5.4 AND LuaJIT
 --  Change the location below to wherever you've installed the appmenuBase.lua that should've been alongside thisw script
