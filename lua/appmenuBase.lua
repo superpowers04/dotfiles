@@ -11,10 +11,15 @@
 
 local module = {
 
+
 	output = "",
 	text_buffer = "",
 
 }
+
+-- If true, a small text including the .desktop's generic name will be shown
+module.include_generic_name = true
+
 
 -- Values to be changed by frontend, to handle support for certain features
 
@@ -124,12 +129,12 @@ else
 					}
 					if content then 
 						elm[1] =(content:match('Name=([^\n]+)') or content:match('Name%[EN%]=([^\n]+)'))
-						local genericName = content:match('GenericName%[EN%]=([^\n]+)')
+						local genericName = content:match('GenericName%[EN%]=([^\n]+)') or content:match('GenericName=([^\n]+)')
 						if genericName then
 							if(not elm[1]) then
 								elm[1] = genericName
 							else
-								elm.gen_name = genericName
+								elm.gn = genericName
 
 							end
 						end
@@ -242,6 +247,7 @@ function module.updateInput(input)
 	while #list > 0 do list[#list]=nil end
 	local index = 1
 	local include_desc = false
+	local include_gen_name = module.include_generic_name
 	if(input:sub(1,1) == "?") then
 		input = input:sub(2)
 		include_desc = true
@@ -283,14 +289,14 @@ function module.updateInput(input)
 		local matched_name,matched_generic_name, matched_description
 		matched_name = v[1]:lower():find(search_simple)
 		endingString[#endingString+1] = matched_name and xml(v[1]):gsub(search,module.highlight_match) or xml(v[1])
-		-- if(v.gen_name) then
+		if(v.gn and include_gen_name) then
 
-		-- 	matched_generic_name = i:lower():find(search_simple)
-		-- 	endingString[#endingString+1] = matched_generic_name and xml(i):gsub(search,module.highlight_match) or xml(i)
-		-- end
+			matched_generic_name = v.gn:lower():find(search_simple)
+			endingString[#endingString+1] = '<small>/'..(matched_generic_name and xml(v.gn):gsub(search,module.highlight_match) or xml(v.gn)).."</small>"
+		end
 		if(v.desc) then
 			matched_description = include_desc and v.desc:lower():find(search_simple)
-			endingString[#endingString+1] = '<span size="small"> ('..(matched_description and xml(v.desc):gsub(search,module.highlight_match) or xml(v.desc)) ..')</span>'
+			endingString[#endingString+1] = ' <span size="small"> ('..(matched_description and xml(v.desc):gsub(search,module.highlight_match) or xml(v.desc)) ..')</span>'
 		end
 
 		if(matched_name or matched_description) then
@@ -463,7 +469,7 @@ module.commands = {
 			return input,list
 		end
 	},
-	{"cl","CLear menu cache",match="^c$",
+	{"cl","CLear menu cache",match="^cl$",
 		update_text=function(self,input)
 			return module.set_text('Remove /tmp/APPMENU_CACHE.lua to clear appmenu cache')
 		end,
