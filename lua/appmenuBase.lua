@@ -252,6 +252,7 @@ function module.updateInput(input)
 		input = input:lower():gsub('%s+$','') or OLD
 	end
 	input = input:gsub(' $','')
+	input = input:gsub('^ ','')
 	if #input == 0 or input == " " then return module.set_text() end
 
 	local search_raw,search,search_simple = input, input:gsub('.',
