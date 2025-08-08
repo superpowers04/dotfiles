@@ -51,13 +51,15 @@ end
 -- kbd.bind({MODKEY}, "Enter",function() cwc.spawn("grim -c '/tmp/SCR.png';aseprite --oneframe '/tmp/SCR.png'") end, {description = "Screenshot and open with aseprite", group = "cwc"})
 kbd.bind({}, "Print",function() 
          local t = os.date('/tmp/%Y-%m-%d_%Hx%M.png');
-         cwc.spawn_with_shell("grim -c '" ..t.."';aseprite --oneframe '"..t.."'") end, {description = "Screenshot and open with aseprite", group = "cwc"})
+         cwc.spawn_with_shell("grim -c '" ..t.."';aseprite --oneframe '"..t.."'") 
+     end, {description = "Screenshot and open with aseprite", group = "cwc"})
 kbd.bind({mod.SHIFT}, "Print",function() 
          local t = os.date('/tmp/%Y-%m-%d_%Hx%M.png');
-         cwc.spawn_with_shell("grim '" ..t.."'; drawpile.AppImage '"..t.."'") end, {description = "Screenshot and open with drawpile", group = "cwc"})
+         cwc.spawn_with_shell("grim '" ..t.."'; drawpile.AppImage '"..t.."'")
+end, {description = "Screenshot and open with drawpile", group = "cwc"})
 kbd.bind({mod.ALT}, "Print",function() 
-         -- local t = os.date('/tmp/%Y-%m-%d_%Hx%M-section.png');
-         cwc.spawn_with_shell(("hyprshot -z -m region -o /tmp/"):format(t)) end, {description = "Screenshot and copy to clipboard", group = "cwc"})
+         cwc.spawn_with_shell(("hyprshot -z -m region -o /tmp/"):format(t))
+end, {description = "Screenshot and copy to clipboard", group = "cwc"})
 kbd.bind({mod.CTRL}, "Print",function() 
          local t = os.date(os.getenv('HOME')..'/Videos/%Y-%m-%d_%H:%M-wfrecorder.mp4');
          cwc.spawn_with_shell("foot -- wf-recorder -g $(slurp) --audio -f='" ..t.."' && read") 
@@ -479,7 +481,7 @@ kbd.bind(MODKEY, "p", function()
 		'rofi -show drun -font "Hack Nerd Font 10" -icon-theme "Papirus-dark" -show-icons')
 end, { description = "application launcher", group = "launcher" })
 kbd.bind(mod.ALT, "Space", function()
-	cwc.spawn_with_shell('amulet "/home/steph/SRC/dotfiles/amulet/appmenu.lua"')
+	cwc.spawn_with_shell('luajit "'..os.getenv('HOME')..'/SRC/dotfiles/lua/appmenuGtk.lua"')
 end, { description = "application launcher", group = "launcher" })
 kbd.bind({mod.ALT, MODKEY}, "Space", function()
 	cwc.spawn_with_shell('rofi -show combi')
