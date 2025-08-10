@@ -49,7 +49,7 @@ end
 
 
 local MenuFolder = os.getenv('HOME')..'/.config/SupersAppMenu/'
-local cacheFile = '/tmp/APPMENU_CACHE.lua'
+local cacheFile = '/tmp/'..os.getenv('USER')..'-APPMENU_CACHE.lua'
 
 
 executeCmd = function(a)
@@ -196,7 +196,7 @@ else
 			end
 			return '{'..table.concat(str,',')..'}'
 		end
-		cache = io.open('/tmp/APPMENU_CACHE.lua','w')
+		cache = io.open(cacheFile,'w')
 		cache:write(('return %s,%s,%s,%s'):format(_tostring(list), _tostring(cached_list), _tostring(exelist), _tostring(paths)))
 		cache:close()
 	end
@@ -471,11 +471,10 @@ module.commands = {
 	},
 	{"cl","CLear menu cache",match="^cl$",
 		update_text=function(self,input)
-			return module.set_text('Remove /tmp/APPMENU_CACHE.lua to clear appmenu cache')
+			return module.set_text('Remove '..cacheFile..' to clear appmenu cache')
 		end,
 		runable=function(self,input)
-			
-			os.execute('rm /tmp/APPMENU_CACHE.lua')
+			os.execute('rm '..cacheFile)
 		end
 	},
 	-- {"wm","Window selection + move to screen",starts_with="ws ",

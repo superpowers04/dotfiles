@@ -7,8 +7,6 @@ pcall(require, "luarocks.loader")
 local gears = require("gears")
 local enum = require("cuteful.enum")
 local tag = require("cuteful.tag")
-local async_spawn = require("async_spawn")
-
 -- make it local so the `undefined global` lsp error stop yapping on every cwc access
 local cwc = cwc
 

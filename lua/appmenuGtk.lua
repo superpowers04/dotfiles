@@ -9,12 +9,9 @@
 
 local Module_Location = os.getenv('HOME')..'/SRC/dotfiles/lua/appmenuBase.lua'
 
-local appID = "Superpowers04.appmenu.lua"
-local appTitle = "Appmenu" 
-local lgi = require("lgi")
-local Gtk = lgi.require("Gtk", "3.0")
-local app = Gtk.Application({ application_id = appID })
+arg = arg or args
 
+-- Load the module first
 local succ,module = pcall(dofile,Module_Location)
 local err
 if succ then 
@@ -22,6 +19,17 @@ if succ then
 else
 	err = module;module = nil;print(err)
 end
+
+if arg[1] == "--cache" then
+	return
+end
+
+
+local appID = "Superpowers04.appmenu.lua"
+local appTitle = "Appmenu" 
+local lgi = require("lgi")
+local Gtk = lgi.require("Gtk", "3.0")
+local app = Gtk.Application({ application_id = appID })
 
 
 
@@ -42,7 +50,7 @@ function app:on_startup()
 	win:set_decorated(false)
 	local box = win:get_child()
 	local entry = Gtk.Entry({ visible = true})
-	local label = Gtk.Label({ visible = true, halign = Gtk.Align.START, label = "", use_markup = true, wrap=0})
+	local label = Gtk.Label({ visible = true, halign = Gtk.Align.START, label = "Loading appmenu module", use_markup = true, wrap=0})
 	
 	if not module then
 		box:add(label)
