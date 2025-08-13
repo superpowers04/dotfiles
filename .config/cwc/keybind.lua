@@ -62,7 +62,7 @@ kbd.bind({mod.ALT}, "Print",function()
 end, {description = "Screenshot and copy to clipboard", group = "cwc"})
 kbd.bind({mod.CTRL}, "Print",function() 
          local t = os.date(os.getenv('HOME')..'/Videos/%Y-%m-%d_%H:%M-wfrecorder.mp4');
-         cwc.spawn_with_shell("foot -- wf-recorder -g $(slurp) --audio -f='" ..t.."' && read") 
+         cwc.spawn_with_shell("foot -- wf-recorder -g \"$(slurp)\" --audio -f='" ..t.."' && read") 
      end, {description = "Screen record", group = "cwc"})
 
 

@@ -49,7 +49,7 @@ function app:on_startup()
 	win.visible=true
 	win:set_decorated(false)
 	local box = win:get_child()
-	local entry = Gtk.Entry({ visible = true})
+	local entry = Gtk.Entry({ visible = true, valign = Gtk.Align.START})
 	local label = Gtk.Label({ visible = true, halign = Gtk.Align.START, label = "Loading appmenu module", use_markup = true, wrap=0})
 	
 	if not module then

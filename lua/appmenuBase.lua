@@ -10,12 +10,12 @@
 
 
 local module = {
-
-
 	output = "",
 	text_buffer = "",
-
 }
+
+-- Allows module to be accessed from anywhere. Remove this if you don't want that
+_G.AppMenu = module
 
 -- If true, a small text including the .desktop's generic name will be shown
 module.include_generic_name = true
@@ -65,7 +65,9 @@ local help = [[Usage:
 Shortcuts:]]
 
 
+local TERMINAL = "xfce4-terminal -e %q"
 
+-- foot bash -c
 
 local menu_contents = io.open(MenuFolder..'/menu_contents.lua')
 local old_menu = {}
@@ -97,10 +99,11 @@ else
 		local succ,err = pcall(function()
 			local chunk,err = load(cache:read('*a'))
 			if not chunk then error(err) end
-			list, cached_list, exelist, paths = chunk()
+			local tbl = chunk()
+			list, cached_list, exelist, paths = tbl.list,tbl.cached_list,tbl.exelist,tbl.paths
 			cache:close()
 		end)
-		if not succ then print('Error while trying to load cached list',err, " - Regenerating config") end
+		if not succ or not list or not paths then print('Error while trying to load cached list',err or "list not found", " - Regenerating config") end
 	end
 	if not cache then
 		local desktop_file_dirs = {
@@ -197,7 +200,12 @@ else
 			return '{'..table.concat(str,',')..'}'
 		end
 		cache = io.open(cacheFile,'w')
-		cache:write(('return %s,%s,%s,%s'):format(_tostring(list), _tostring(cached_list), _tostring(exelist), _tostring(paths)))
+		cache:write(('return %s'):format(_tostring({
+			list = list,
+			cached_list = cached_list,
+			exelist = exelist,
+			paths = paths
+		})))
 		cache:close()
 	end
 end
@@ -410,16 +418,28 @@ module.commands = {
 			end
 		end
 	},
-	{"t ","Run shell command in terminal",
-		starts_with="t ",
-		match = nil,
+	{"t,tb,t_","Run shell command in terminal, Include underscore to keep terminal open after command, b to run in $SHELL",
+		-- starts_with="t ",
+		match = "^tb?_? ",
 		check = nil,
 		update_text=function(self,input)
-			return module.set_text(("Run command %q in terminal"):format(input:sub(3)))
+			return module.set_text(("Run command %q in terminal"):format(input:gsub('t.- ','')))
 		end,
 		runable=function(self,input)
-			input = input:sub(3)
-			module.spawn(('foot bash -c %q'):format(input..';read'))
+			local use_shell,use_read = false,false
+			input = input:gsub("t.- ",function(cmd)
+				if(cmd:find('_')) then use_read = true;use_shell = true end
+				if(cmd:find('b')) then use_shell = true end
+
+				return ""
+			end)
+			if(use_read) then
+				cmd = cmd..';read'
+			end
+			if(use_shell) then
+				cmd = ('%s -c %q'):format(os.getenv('SHELL'),cmd)
+			end
+			module.spawn((TERMINAL):format(input))
 			
 		end
 	},
@@ -496,35 +516,6 @@ module.commands = {
 	-- 	end
 	-- },
 
-	{"w","(CWC ONLY) (W)indow selection + (C)lose, (M)ove to screen",
-		match="^w%w? ",
-		funcs = {
-			w=function(_,self) os.execute(('cwctl -c "cwc.client.get()[%i]:jump_to()"'):format(self.client_id)) end,
-			wm=function(_,self) self.client:jump_to() end,
-			wc=function(_,self) os.execute(('cwctl -c "local c = cwc.client.get()[%i];c:focus();c:move_to_screen()"'):format(self.client_id)) end,
-		},
-		get_list=function(self,input)
-			local list = {}
-
-			local f = input:sub(1,2):gsub(' $',''):lower()
-			local func = self.funcs[f] or self.funcs.w
-			if(os.getenv('XDG_CURRENT_DESKTOP') == "cwc") then
-				local e = io.popen(('cwctl -c %q'):format([[local str = {};for i,v in pairs(cwc.client.get()) do str[#str+1] = v.name and ('%s - %s'):format(v.name,v.appid) or v.appid end;return table.concat(str,'\n')]]),'r')
-				local content = e:read('*a')
-				e:close()
-				local i = 0
-				for clientName in content:gmatch('[^\n]+') do
-					i = i + 1
-					list[i] = {f.. ' ' .. clientName,func,client_id = i}
-				end
-			end
-			-- local list= {}
-			-- for _,cur_client in ipairs(client.get()) do
-			-- 	list[#list+1] = {f..' '..(cur_client.name or cur_client.class),func,client=cur_client}
-			-- end
-			return input,list
-		end
-	},
 	{"d","duckduckgo search",starts_with="d ",
 		runable=function(s,input)
 
@@ -619,6 +610,50 @@ function module.finish(input)
 		return
 	end
 end
+local current_desktop = (os.getenv('XDG-DESKTOP') or ""):lower()
 
+if(current_desktop == "cwc") then
+
+	module.commands[#module.commands+1]={"w","(CWC ONLY) (W)indow selection + (C)lose, (M)ove to screen",
+		match="^w%w? ",
+		funcs = {
+			w=function(_,self) os.execute(('cwctl -c "cwc.client.get()[%i]:jump_to()"'):format(self.client_id)) end,
+			wm=function(_,self) self.client:jump_to() end,
+			wc=function(_,self) os.execute(('cwctl -c "local c = cwc.client.get()[%i];c:focus();c:move_to_screen()"'):format(self.client_id)) end,
+		},
+		get_list=function(self,input)
+			local list = {}
+
+			local f = input:sub(1,2):gsub(' $',''):lower()
+			local func = self.funcs[f] or self.funcs.w
+			if(os.getenv('XDG_CURRENT_DESKTOP') == "cwc") then
+				local e = io.popen(('cwctl -c %q'):format([[local str = {};for i,v in pairs(cwc.client.get()) do str[#str+1] = v.name and ('%s - %s'):format(v.name,v.appid) or v.appid end;return table.concat(str,'\n')]]),'r')
+				local content = e:read('*a')
+				e:close()
+				local i = 0
+				for clientName in content:gmatch('[^\n]+') do
+					i = i + 1
+					list[i] = {f.. ' ' .. clientName,func,client_id = i}
+				end
+			end
+			-- local list= {}
+			-- for _,cur_client in ipairs(client.get()) do
+			-- 	list[#list+1] = {f..' '..(cur_client.name or cur_client.class),func,client=cur_client}
+			-- end
+			return input,list
+		end
+	}
+end
+
+
+
+
+local extension = io.open(MenuFolder..'/extensions.lua')
+if extension then 
+	local succ,err = pcall(function()
+		load(menu_contents:read('*a'))()
+	end)
+	menu_contents:close()
+end
 
 return module

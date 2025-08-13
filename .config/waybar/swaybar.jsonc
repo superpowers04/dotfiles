@@ -34,7 +34,7 @@
         "clock",
         "custom/swaync",
         "custom/floating",
-        "custom/maximize",
+        // "custom/maximize",
         "custom/close"
     ],
     // Modules configuration

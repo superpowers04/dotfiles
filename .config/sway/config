@@ -20,6 +20,8 @@ set $term foot
 set $menu rofi -show
 
 default_border pixel 1
+focus_follows_mouse no
+
 ### Output configuration
 #
 # Default wallpaper (more resolutions are available in /usr/share/backgrounds/sway/)
@@ -221,7 +223,8 @@ mode "resize" {
     bindsym --locked XF86MonBrightnessDown exec brightnessctl set 5%-
     bindsym --locked XF86MonBrightnessUp exec brightnessctl set 5%+
     # Special key to take a screenshot with grim
-    bindsym Print exec hyprshot -z -m region -o /tmp/
+    bindsym Print exec lua ~/SRC/dotfiles/lua/screenshot.lua -f
+    bindsym shift+Print exec flameshot gui
 
 #
 # Status Bar:
@@ -249,10 +252,21 @@ exec /usr/lib/xdg-desktop-portal-wlr
 #bindsym $mod+u output HDMI-A-1 mode --custom 1280x720@75Hz position 0,0
 #; output HDMI-A-2 resolution 1280x720 position 0,1080
 
-#bindsym $mod+shift+u output HDMI-A-1 mode --custom 1920x1080@73Hz position 0,0 ; output HDMI-A-2 resolution 1920x1080 position 0,1080
+#bindsym $mod+shift+u exec swaymsg output HDMI-A-1 mode --custom 1920x1080@73Hz position 0,0 ; output HDMI-A-2 resolution 1920x1080 position 0,1080
 
-output HDMI-A-1 mode --custom 1920x1080@73Hz position 0,0
-output HDMI-A-2 resolution 1920x1080 position 0,1080 
+
+
+set $top HDMI-A-1
+set $bot HDMI-A-2
+output $top mode --custom 1920x1080@73Hz position 0,0
+output $bot resolution 1920x1080 position 0,1080 
+# output HDMI-A-1 mode --custom 1280x720@75Hz position 0,0
+# output HDMI-A-2 resolution 1920x1080 position 0,720
+
+
+
+bindsym $mod+u exec wlr-randr --output HDMI-A-1 --custom 1920x1080@73 && wlr-randr --output HDMI-A-2 --below HDMI-A-1
+bindsym $mod+shift+u exec wlr-randr --output HDMI-A-1 --custom 1280x720@75 && wlr-randr --output HDMI-A-2 --below HDMI-A-1
 
 
 exec waybar -c ~/.config/waybar/swaybar.jsonc
