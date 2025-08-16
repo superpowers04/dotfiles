@@ -293,7 +293,6 @@ function module.updateInput(input)
 	for i,v in ipairs(list_to_search) do
 		-- i = v[1]
 		local endingString = {'*'}
-		-- local s = i:lower():find(search_simple)
 		local matched_name,matched_generic_name, matched_description
 		matched_name = v[1]:lower():find(search_simple)
 		endingString[#endingString+1] = matched_name and xml(v[1]):gsub(search,module.highlight_match) or xml(v[1])
@@ -337,6 +336,7 @@ function module.updateInput(input)
 			end
 		end
 		local list = {}
+		-- TODO FIX SORTING, SORTING SHOULD BE BY LENGTH OF MATCHED CHARACTERS, NOT THE FIRST </b> TAG
 		table.sort(fullWord,function(a,b)
 			return a:find("</b>") < b:find("</b>")
 		end) 
@@ -423,11 +423,11 @@ module.commands = {
 		match = "^tb?_? ",
 		check = nil,
 		update_text=function(self,input)
-			return module.set_text(("Run command %q in terminal"):format(input:gsub('t.- ','')))
+			return module.set_text(("Run command %q in terminal"):format(input:gsub('^t.- ','')))
 		end,
 		runable=function(self,input)
 			local use_shell,use_read = false,false
-			input = input:gsub("t.- ",function(cmd)
+			input = input:gsub("^t.- ",function(cmd)
 				if(cmd:find('_')) then use_read = true;use_shell = true end
 				if(cmd:find('b')) then use_shell = true end
 
@@ -547,7 +547,7 @@ module.set_text = function(txt,plain)
 	local sep = ('-'):rep(math.floor(16-((#lp)*.5)))
 	lp =  sep..lp..sep
 	if module.allow_markup then
-		module.output = (lp.. "\n"..txt)
+		module.output = (lp.. "\n"..txt):gsub('&.-;',function(a) return a:gsub('<.->','') end)
 		module.apply_text(module.output)
 		return
 	end

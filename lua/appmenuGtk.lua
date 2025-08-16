@@ -7,6 +7,8 @@
 
 -- This frontend has UP and DOWN bound to change menu options and tab to auto-fill any highlighted desktop files to their Exec field
 
+
+
 local Module_Location = os.getenv('HOME')..'/SRC/dotfiles/lua/appmenuBase.lua'
 
 arg = arg or args

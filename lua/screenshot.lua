@@ -5,7 +5,7 @@
 local args= arg or args
 
 local flags={
-	show_aseprite=false,
+	dont_run_exec=false,
 	wayland=false,
 	forcex11=false,
 	exec="aseprite --oneframe %q",
@@ -15,7 +15,7 @@ local flags={
 }
 local qf = {
 	w='wayland',
-	a='show_aseprite',
+	r='dont_run_exec',
 	x='forcex11',
 	f='use_flameshot',
 }
@@ -37,6 +37,10 @@ end
 
 
 local time = os.date('/tmp/%Y-%m-%d_%Hx%M.%S.png')
+if(flags.cmd) then
+	os.execute(cmd:gsub('%%FILE%%',time))
+	return
+end
 if(flags.use_flameshot) then
 	os.execute(('flameshot %q -p %q; %s &'):format(flags.type,time,flags.exec:format(time)))
 	return
