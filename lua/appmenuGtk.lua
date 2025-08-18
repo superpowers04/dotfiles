@@ -72,39 +72,16 @@ function app:on_startup()
 
 
 	local key_functions = { -- I would define this outside of on_startup but these functions require access to `entry` and `label`
-		[keys.tab] = function()
-			if(tostring(module.runable[2]):find('%.desktop$')) then
-				local file = io.open(tostring(module.runable[2]),'r')
-				local content = file:read('*a')
-				file:close()
-				local newBuffer = content:match('Exec=([^\n]+)')
-				if newBuffer then
-					module.text_buffer = newBuffer:gsub('%%.',''):gsub('^%s+',''):gsub('%s+$','')
-				end
-				return true
-			end
-		end,
-		[keys.up] =function()
-			local buffer = module.text_buffer
-			local id = tonumber(buffer:match(' (%d+)$') or 1)
-			id = id + 1
-			module.text_buffer = (buffer:match('(.+) %d+$') or buffer) .. " " .. id
-			return true
-		end,
-		[keys.down] = function()
-			local buffer = module.text_buffer
-			local id = tonumber(buffer:match(' (%d+)$') or 2)
-			id = id - 1
-			if(id < 1) then id = 1 end
-			module.text_buffer = (buffer:match('(.+) %d+$') or buffer) .. " " .. id
-			return true
-		end,
+		[keys.tab] = module.key_functions.tab,
+		[keys.up] = module.key_functions.up,
+		[keys.down] = module.key_functions.down,
 		[keys.enter] = function()
 			module.finish(module.text_buffer)
 			win:destroy()
 			return true
 		end
 	}
+	module.move_cursor = function(pos) entry:set_position(pos);print(pos) end
 	win.on_focus_out_event=function()
 		win:destroy()
 	end

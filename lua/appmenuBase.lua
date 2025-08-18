@@ -12,6 +12,7 @@
 local module = {
 	output = "",
 	text_buffer = "",
+	queued_cursor_pos = nil,
 }
 
 -- Allows module to be accessed from anywhere. Remove this if you don't want that
@@ -42,6 +43,10 @@ end
 function module.apply_text(input)
 	-- STUB
 end
+-- Gets called whenever the text cursor should be moved
+function module.move_cursor(pos)
+	-- STUB
+end
 
 
 
@@ -52,6 +57,12 @@ local MenuFolder = os.getenv('HOME')..'/.config/SupersAppMenu/'
 local cacheFile = '/tmp/'..os.getenv('USER')..'-APPMENU_CACHE.lua'
 
 
+local function exec(cmd)
+	local f = io.popen(cmd,'r')
+	local c = f:read('*a')
+	f:close()
+	return c
+end
 executeCmd = function(a)
 	local e = io.popen(a,'r')
 	local r = e:read('*a')
@@ -88,7 +99,7 @@ local function generate_help(cmds)
 end
 
 local recents = {}
-local list, cached_list, exelist, paths, runable = {}, {}, {}, {},false
+local list, cached_list, exelist, paths, runable = {}, {}, {}, {""},false
 
 if(appmenuList) then
 	cached_list = appmenuList
@@ -219,6 +230,18 @@ end
 function module.highlight_match(...)
 	local tbl = {...}
 	if(module.allow_markup) then
+		local l = 0
+		while l < #tbl do
+			l = l + 1
+			local bef,cur,next = tbl[l-1],tbl[l],tbl[l+1]
+			if(cur == nil or next == nil) then break end
+			if(cur == "") then
+				table.remove(tbl,l)
+				table.remove(tbl,l)
+				l = l-1
+				tbl[l] = bef..next
+			end
+		end
 		for i,v in pairs(tbl) do
 			if(i % 2 == 1) then
 				tbl[i] = '<b>'..tbl[i]..'</b>'
@@ -254,6 +277,7 @@ function module.updateInput(input)
 	end
 	while #list > 0 do list[#list]=nil end
 	local index = 1
+	local sort = true
 	local include_desc = false
 	local include_gen_name = module.include_generic_name
 	if(input:sub(1,1) == "?") then
@@ -275,16 +299,29 @@ function module.updateInput(input)
 				or ('([%s%s])(.-)'):format(a:upper(),a:lower()) 
 		end),input:lower():gsub('.','%1.-')
 	local runables = {}
-	local exec = input:match('[^ ]+')
+	local exec = input:match('[^ ]+') or input:match('^"([^"]+)') or input:match('^\'([^\']+)')
 	if(executables) then
 		for _,path in ipairs(paths) do
 			path = path..'/'..exec
 			local file = io.open(path,'r')
 			if(file) then
+				file:close()
 				local TEXT = "* <b></b><b>"..path:gsub('<>','\\%1')..'</b> (Executable)'
 				list[#list+1] = TEXT
 				runables[TEXT] = path .. input:sub(#exec+1)
-				file:close()
+				local extra = input:sub(#exec)
+				local path = extra:match(' (/[^ ]+)$') or extra:match(' "([^ ][^"]+)$')
+				if(path) then
+					sort = false
+					for result in executeCmd(('find %q -maxdepth 1 -mindepth 1'):format(path:match('.+/'))):gmatch('[^\n]+') do
+						if(result:sub(0,#path) == path) then
+							local end_path = input..result:sub(#path+1)
+							local TEXT = "* <b></b><b>"..end_path..'</b>'
+							list[#list+1] = TEXT
+							runables[TEXT] = end_path
+						end
+					end
+				end
 			end
 		end
 	end
@@ -328,23 +365,25 @@ function module.updateInput(input)
 	if #list > 0 then
 		local fullWord,wordparts = {},{}
 		local sraw = search_raw:lower()
-		for i,v in pairs(list) do
-			if(v:lower():find(sraw)) then
-				fullWord[#fullWord+1] = v
-			else
-				wordparts[#wordparts+1] = v
+		if(sort) then
+			for i,v in pairs(list) do
+				if(v:lower():find(sraw)) then
+					fullWord[#fullWord+1] = v
+				else
+					wordparts[#wordparts+1] = v
+				end
 			end
+			local list = {}
+			-- TODO FIX SORTING, SORTING SHOULD BE BY LENGTH OF MATCHED CHARACTERS, NOT THE FIRST </b> TAG
+			table.sort(fullWord,function(a,b)
+				return a:find("</b>") < b:find("</b>")
+			end) 
+			table.sort(wordparts,function(a,b)
+				return a:find("</b>") < b:find("</b>")
+			end) 
+			for i,v in ipairs(fullWord) do list[#list+1] = v end
+			for i,v in ipairs(wordparts) do list[#list+1] = v end
 		end
-		local list = {}
-		-- TODO FIX SORTING, SORTING SHOULD BE BY LENGTH OF MATCHED CHARACTERS, NOT THE FIRST </b> TAG
-		table.sort(fullWord,function(a,b)
-			return a:find("</b>") < b:find("</b>")
-		end) 
-		table.sort(wordparts,function(a,b)
-			return a:find("</b>") < b:find("</b>")
-		end) 
-		for i,v in ipairs(fullWord) do list[#list+1] = v end
-		for i,v in ipairs(wordparts) do list[#list+1] = v end
 		if(list[index]) then
 			local runable = runables[list[index] or ""]
 			module.runable = runable
@@ -433,6 +472,7 @@ module.commands = {
 
 				return ""
 			end)
+			if(not input or input == "") then input='bash' end 
 			if(use_read) then
 				cmd = cmd..';read'
 			end
@@ -443,19 +483,26 @@ module.commands = {
 			
 		end
 	},
-	{"/, ~","Directory search", match="^[~/]",
-		update_text=function(self,input)
-			local f = io.open(input:match('^"(.-)"') or input:match('[^ ]+'),'r')
-			if(f) then
-				f:close()
-				module.set_text('Run '..input)
-			else
-				module.set_text(('(Invalid file or directory!) Run %s'):format(input))
-			end
-			module.runable = input
-			return
-		end
-	},
+	-- {"/, ~","Directory search", match="^[~/]",
+	-- 	get_list=function(self,input)
+	-- 		-- local f = io.open(input:match('^"(.-)"') or input:match('[^ ]+'),'r')
+	-- 		local list = {}
+	-- 		for result in executeCmd(('find %q -maxdepth 1 -mindepth 1'):format(input)):gmatch('[^\n]+') do
+	-- 			if(result:sub(0,#path) == path) then
+	-- 				local TEXT = "* <b></b><b>"..result..'</b>'
+	-- 				list[#list+1] = {TEXT,result}
+	-- 			end
+	-- 		end
+	-- 		-- if(f) then
+	-- 		-- 	f:close()
+	-- 		-- 	module.set_text('Run '..input)
+	-- 		-- else
+	-- 		-- 	module.set_text(('(Invalid file or directory!) Run %s'):format(input))
+	-- 		-- end
+	-- 		-- module.runable = input
+	-- 		return input,list
+	-- 	end
+	-- },
 	{"^","Run lua code", starts_with="^",
 		update_text=function(self,input)
 			runLua(input:sub(2))
@@ -529,8 +576,56 @@ module.commands = {
 
 }
 
-module.keyFunctions = {
+module.key_functions = {
+	tab = function()
+		if(tostring(module.runable[2]):find('%.desktop$')) then
+			local file = io.open(tostring(module.runable[2]),'r')
+			local content = file:read('*a')
+			file:close()
+			local newBuffer = content:match('Exec=([^\n]+)')
+			if newBuffer then
+				module.text_buffer = newBuffer:gsub('%%.',''):gsub('^%s+',''):gsub('%s+$','')
+			end
+			module.queued_text_pos = (#module.text_buffer)
+			return true
+		elseif(module.runable.tab) then
+			module.text_buffer = module.runable.tab
+			module.queued_text_pos = (#module.text_buffer)
+			return true
+		elseif(type(module.runable) == "string") then
+			module.text_buffer = module.runable
+			module.queued_text_pos = (#module.text_buffer)
+			return true
 
+		end
+	end,
+	up =function()
+		local buffer,id = module.text_buffer
+		buffer,id = buffer:match('(.+) (%d+)$')
+		if buffer and id then
+			id = tonumber(id) or 1
+			id = id + 1
+		else
+			buffer, id = module.text_buffer,tonumber(id or 1)
+		end
+		module.text_buffer = (buffer:match('(.+) %d+$') or buffer) .. " " .. id
+		module.queued_text_pos = (#buffer)
+		return true
+	end,
+	down = function()
+		local buffer,id = module.text_buffer
+		buffer,id = buffer:match('(.+) (%d+)$')
+		if buffer and id then
+			id = tonumber(id) or 1
+			id = id - 1
+			if(id < 1) then id = 1 end
+		else
+			buffer, id = module.text_buffer,tonumber(id or 1)
+		end
+		module.text_buffer = (buffer:match('(.+) %d+$') or buffer) .. " " .. id
+		module.queued_text_pos = (#buffer)
+		return true
+	end,
 }
 
 
@@ -540,19 +635,28 @@ module.handle_input = function(buffer,key,modifiers)
 	end
 	return buffer
 end
+module._update_cursor_pos = function()
+	if(module.queued_text_pos) then
+		module.move_cursor(module.queued_text_pos)
+		module.queued_text_pos=nil
+	end
+end
 module.set_text = function(txt,plain)
 	if(txt == nil) then txt = generate_help();plain = false end
 	txt = tostring(txt)
 	local lp = tostring(lastPressed)
 	local sep = ('-'):rep(math.floor(16-((#lp)*.5)))
 	lp =  sep..lp..sep
+
 	if module.allow_markup then
 		module.output = (lp.. "\n"..txt):gsub('&.-;',function(a) return a:gsub('<.->','') end)
 		module.apply_text(module.output)
+		module._update_cursor_pos()
 		return
 	end
 	module.output = (lp.. "\n"..txt):gsub('<.->','')
 	module.apply_text(module.output)
+	module._update_cursor_pos()
 	-- if plain then
 	-- 	textbox.text = lp.. "\n"..txt
 	-- else
