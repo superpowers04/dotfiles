@@ -8,6 +8,8 @@
 -- Please note, this script was not originally designed to be public so it's a bit of a mess
 
 
+-- TODO ADD MARKUP AFTER INSTEAD OF DURING
+
 
 local module = {
 	output = "",
@@ -34,6 +36,9 @@ module.allow_markup = false
 
 -- Script will just return the input when module.finish is called and some other things will be disabled
 module.dmenu_mode = false 
+
+
+module.locked_char_width = 300
 
 -- Function that gets called for any executables
 function module.spawn(cmd)
@@ -336,11 +341,11 @@ function module.updateInput(input)
 		if(v.gn and include_gen_name) then
 
 			matched_generic_name = v.gn:lower():find(search_simple)
-			endingString[#endingString+1] = '<small>/'..(matched_generic_name and xml(v.gn):gsub(search,module.highlight_match) or xml(v.gn)).."</small>"
+			endingString[#endingString+1] = '<span size="small" color="#dddddd">/'..(matched_generic_name and xml(v.gn):gsub(search,module.highlight_match) or xml(v.gn)).."</span>"
 		end
 		if(v.desc) then
 			matched_description = include_desc and v.desc:lower():find(search_simple)
-			endingString[#endingString+1] = ' <span size="small"> ('..(matched_description and xml(v.desc):gsub(search,module.highlight_match) or xml(v.desc)) ..')</span>'
+			endingString[#endingString+1] = ' <span size="x-small" color="#aaaaaa"> ('..(matched_description and xml(v.desc):gsub(search,module.highlight_match) or xml(v.desc)) ..')</span>'
 		end
 
 		if(matched_name or matched_description) then
@@ -365,6 +370,7 @@ function module.updateInput(input)
 	if #list > 0 then
 		local fullWord,wordparts = {},{}
 		local sraw = search_raw:lower()
+		local list = list
 		if(sort) then
 			for i,v in pairs(list) do
 				if(v:lower():find(sraw)) then
@@ -373,14 +379,15 @@ function module.updateInput(input)
 					wordparts[#wordparts+1] = v
 				end
 			end
-			local list = {}
+			list = {}
 			-- TODO FIX SORTING, SORTING SHOULD BE BY LENGTH OF MATCHED CHARACTERS, NOT THE FIRST </b> TAG
-			table.sort(fullWord,function(a,b)
-				return a:find("</b>") < b:find("</b>")
-			end) 
-			table.sort(wordparts,function(a,b)
-				return a:find("</b>") < b:find("</b>")
-			end) 
+			pcall(function()
+				local compFunc = function(a,b) 
+					return a:match('<b>.-</b>') < b:match('<b>.-</b>')
+				end
+				table.sort(fullWord,function(a,b) return a:find('<b>') > b:find('<b>') end) 
+				table.sort(wordparts,compFunc) 
+			end)
 			for i,v in ipairs(fullWord) do list[#list+1] = v end
 			for i,v in ipairs(wordparts) do list[#list+1] = v end
 		end
@@ -606,7 +613,7 @@ module.key_functions = {
 			id = tonumber(id) or 1
 			id = id + 1
 		else
-			buffer, id = module.text_buffer,tonumber(id or 1)
+			buffer, id = module.text_buffer,tonumber(id or 2)
 		end
 		module.text_buffer = (buffer:match('(.+) %d+$') or buffer) .. " " .. id
 		module.queued_text_pos = (#buffer)
@@ -644,9 +651,7 @@ end
 module.set_text = function(txt,plain)
 	if(txt == nil) then txt = generate_help();plain = false end
 	txt = tostring(txt)
-	local lp = tostring(lastPressed)
-	local sep = ('-'):rep(math.floor(16-((#lp)*.5)))
-	lp =  sep..lp..sep
+	local lp = '|'..(' '):rep(math.floor(module.locked_char_width))..'|'
 
 	if module.allow_markup then
 		module.output = (lp.. "\n"..txt):gsub('&.-;',function(a) return a:gsub('<.->','') end)
