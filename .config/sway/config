@@ -74,7 +74,7 @@ focus_follows_mouse no
     # Kill focused window
     bindsym $mod+Shift+q kill
     # Kill focused window
-    bindsym $mod+q kill
+	bindsym $mod+q kill
 
     # Start your launcher
     bindsym $mod+d exec $menu
@@ -245,6 +245,9 @@ mode "resize" {
 #         inactive_workspace #32323200 #32323200 #5c5c5c
 #     }
 # }
+
+include /etc/sway/config.d/*
+
 exec udisksctl mount -b /dev/nvme0n1p2
 exec xsettingsd
 exec xfsettingsd
@@ -260,14 +263,15 @@ exec /usr/lib/xdg-desktop-portal-wlr
 
 set $top HDMI-A-1
 set $bot HDMI-A-2
-output $top mode --custom 1920x1080@73Hz position 0,0
 output $bot resolution 1920x1080 position 0,1080 
+output $top mode --custom 1920x1080@73Hz position 0,0
 # output HDMI-A-1 mode --custom 1280x720@75Hz position 0,0
 # output HDMI-A-2 resolution 1920x1080 position 0,720
 
 
 
 bindsym $mod+u exec wlr-randr --output HDMI-A-1 --custom 1920x1080@73 && wlr-randr --output HDMI-A-2 --below HDMI-A-1
+bindsym $mod+ctrl+u exec wlr-randr --output HDMI-A-1 --custom 1920x1080@60 && wlr-randr --output HDMI-A-2 --below HDMI-A-1
 bindsym $mod+shift+u exec wlr-randr --output HDMI-A-1 --custom 1280x720@75 && wlr-randr --output HDMI-A-2 --below HDMI-A-1
 
 
@@ -280,6 +284,3 @@ exec lxqt-policykit-agent
 
 
 include /etc/xdg/swaysome.conf
-include /etc/sway/config.d/*
-
-#execevery swaynag "reloaded"
