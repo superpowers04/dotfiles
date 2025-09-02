@@ -36,13 +36,18 @@ module.allow_markup = false
 
 -- Script will just return the input when module.finish is called and some other things will be disabled
 module.dmenu_mode = false 
-
+-- Command to use for terminal
+module.terminal = "xfce4-terminal -e %q"
 
 module.locked_char_width = 300
 
 -- Function that gets called for any executables
 function module.spawn(cmd)
 	os.execute(cmd .. " &")
+end
+-- Function that gets called when something is run in a terminal
+function module.run_in_terminal(cmd)
+	module.spawn((module.terminal):format(cmd))
 end
 -- Gets called after set_text, can be used if you need to manually set a label or something
 function module.apply_text(input)
@@ -53,13 +58,8 @@ function module.move_cursor(pos)
 	-- STUB
 end
 
-
-
-
-
-
-local MenuFolder = os.getenv('HOME')..'/.config/SupersAppMenu/'
-local cacheFile = '/tmp/'..os.getenv('USER')..'-APPMENU_CACHE.lua'
+module.MenuFolder = os.getenv('HOME')..'/.config/SupersAppMenu/'
+module.cacheFile = '/tmp/APPMENU_CACHE-'..os.getenv('USER')..'.lua'
 
 
 local function exec(cmd)
@@ -81,11 +81,7 @@ local help = [[Usage:
 Shortcuts:]]
 
 
-local TERMINAL = "xfce4-terminal -e %q"
-
--- foot bash -c
-
-local menu_contents = io.open(MenuFolder..'/menu_contents.lua')
+local menu_contents = io.open(module.MenuFolder..'/menu_contents.lua')
 local old_menu = {}
 if menu_contents then 
 	local succ,err = pcall(function()
@@ -110,7 +106,7 @@ if(appmenuList) then
 	cached_list = appmenuList
 	module.dmenu_mode = true
 else
-	local cache = io.open(cacheFile,'r')
+	local cache = io.open(module.cacheFile,'r')
 	if(cache) then
 		local succ,err = pcall(function()
 			local chunk,err = load(cache:read('*a'))
@@ -127,10 +123,20 @@ else
 			'/usr/share/applications'
 		}
 		do
+			local path_cache = {}
 			for path in os.getenv('PATH'):gmatch('[^:]+') do
-				paths[#paths+1]=path
+				path = exec(('file %q'):format(path)):match('link to (.+)') or path
+				if not path_cache[path] then
+					paths[#paths+1]=path
+					path_cache[path] = true
+				end
 			end
-			paths[#paths+1]=os.getenv('HOME').."/.local/bin"
+			do
+				local f = os.getenv('HOME').."/.local/bin"
+				if not path_cache[f] then
+					paths[#paths+1]=f
+				end
+			end
 		end
 
 		do
@@ -168,7 +174,7 @@ else
 			end
 		end
 		table.sort(list,function(a,b) return #a[1] > #b[1] end)
-		table.sort(cached_list,function(a,b) print(a[1],b[1]) return #a[1] > #b[1] end)
+		table.sort(cached_list,function(a,b) return #a[1] > #b[1] end)
 		do
 			local proc = io.popen('flatpak list --app | cat','r')
 			local flatpak_list = proc:read('*a')
@@ -215,7 +221,7 @@ else
 			end
 			return '{'..table.concat(str,',')..'}'
 		end
-		cache = io.open(cacheFile,'w')
+		cache = io.open(module.cacheFile,'w')
 		cache:write(('return %s'):format(_tostring({
 			list = list,
 			cached_list = cached_list,
@@ -259,9 +265,9 @@ end
 function module.updateInput(input)
 	module.runable = false
 	module.text_buffer = input
-	local executables=true
+	local executables=not module.dmenu_mode
 	local list_to_search = cached_list
-	if(not module.dmenu_mode) then
+	if(executables) then
 		if not input or #input == 0 or input == " " then return module.set_text() end
 		for i,cmd in pairs(module.commands) do
 			if((cmd.starts_with and input:sub(1,#cmd.starts_with) ==cmd.starts_with) or cmd.match and input:find(cmd.match)) then
@@ -297,15 +303,33 @@ function module.updateInput(input)
 	end
 	input = input:gsub(' $',''):gsub('^ ','')
 	if #input == 0 or input == " " then return module.set_text() end
-
-	local search_raw,search,search_simple = input, input:gsub('.',
-		function(a) 
-			return a:upper() == a:lower() and ('('..a..")(.-)") 
-				or ('([%s%s])(.-)'):format(a:upper(),a:lower()) 
-		end),input:lower():gsub('.','%1.-')
+	local search,search_simple 
+	do
+		local stop_filter = false
+		search = input:gsub('.',
+			function(a) 
+				if(a=="'" or a=='"') then
+					stop_filter = not stop_filter
+					return ''
+				end
+				return stop_filter and a or a:upper() == a:lower() and ('('..a..")(.-)") 
+					or ('([%s%s])(.-)'):format(a:upper(),a:lower()) 
+			end)
+		stop_filter=false
+		search_simple = input:lower():gsub('.',function(a)
+				if(a=="'" or a=='"') then
+					stop_filter = not stop_filter
+					return ''
+				end
+				return stop_filter and a or a..'.-'
+			end)
+	end
 	local runables = {}
-	local exec = input:match('[^ ]+') or input:match('^"([^"]+)') or input:match('^\'([^\']+)')
+	local exec = input:match('^([^ ]+)') or input:match('^"([^"]+)') or input:match('^\'([^\']+)')
+	local locked_order_list = {}
 	if(executables) then
+		local list = locked_order_list
+
 		for _,path in ipairs(paths) do
 			path = path..'/'..exec
 			local file = io.open(path,'r')
@@ -315,13 +339,17 @@ function module.updateInput(input)
 				list[#list+1] = TEXT
 				runables[TEXT] = path .. input:sub(#exec+1)
 				local extra = input:sub(#exec)
-				local path = extra:match(' (/[^ ]+)$') or extra:match(' "([^ ][^"]+)$')
+				local path = extra:match(' (/)$') or extra:match(' (/[^ ]+)$') or extra:match(' "([^ ][^"]+)$')
 				if(path) then
 					sort = false
-					for result in executeCmd(('find %q -maxdepth 1 -mindepth 1'):format(path:match('.+/'))):gmatch('[^\n]+') do
+					local pathFolder = path:match('.+/') or path..'/'
+					local out = executeCmd(('find %q -maxdepth 1 -mindepth 1 -type d'):format(pathFolder)):gsub('\n','/\n') 
+
+					out = (out == "" and "" or out.."\n")..executeCmd(('find %q -maxdepth 1 -mindepth 1 -type f'):format(pathFolder))
+					for result in out:gmatch('[^\n]+') do
 						if(result:sub(0,#path) == path) then
 							local end_path = input..result:sub(#path+1)
-							local TEXT = "* <b></b><b>"..end_path..'</b>'
+							local TEXT = " * <b></b><b>"..end_path..'</b>'
 							list[#list+1] = TEXT
 							runables[TEXT] = end_path
 						end
@@ -330,7 +358,6 @@ function module.updateInput(input)
 			end
 		end
 	end
-	exec = exec:lower()
 	local xml = module.allow_markup and module.xml_escape or function(...) return ... end
 	for i,v in ipairs(list_to_search) do
 		-- i = v[1]
@@ -367,9 +394,9 @@ function module.updateInput(input)
 		-- 	end)
 		-- end
 	end
-	if #list > 0 then
+	if #list+#locked_order_list > 0 then
 		local fullWord,wordparts = {},{}
-		local sraw = search_raw:lower()
+		local sraw = input:lower()
 		local list = list
 		if(sort) then
 			for i,v in pairs(list) do
@@ -379,17 +406,23 @@ function module.updateInput(input)
 					wordparts[#wordparts+1] = v
 				end
 			end
-			list = {}
+			list = locked_order_list
 			-- TODO FIX SORTING, SORTING SHOULD BE BY LENGTH OF MATCHED CHARACTERS, NOT THE FIRST </b> TAG
 			pcall(function()
 				local compFunc = function(a,b) 
 					return a:match('<b>.-</b>') < b:match('<b>.-</b>')
 				end
-				table.sort(fullWord,function(a,b) return a:find('<b>') > b:find('<b>') end) 
+				table.sort(fullWord,function(a,b) return a:find('</b>') > b:find('</b>') end) 
 				table.sort(wordparts,compFunc) 
 			end)
 			for i,v in ipairs(fullWord) do list[#list+1] = v end
 			for i,v in ipairs(wordparts) do list[#list+1] = v end
+		else
+			local lol_index = #locked_order_list
+			while lol_index > 0 do 
+				table.insert(list,1,locked_order_list[lol_index])
+				lol_index = lol_index - 1
+			end
 		end
 		if(list[index]) then
 			local runable = runables[list[index] or ""]
@@ -411,6 +444,10 @@ function module.updateInput(input)
 			table.insert(list,1,'<span color="#F00"><b><i>NO ITEM SELECTED!</i></b></span>')
 		end
 		module.set_text(table.concat(list, "\n"))
+		return
+	end
+	if(module.dmenu_mode) then
+		module.set_text('Nothing found out of '..#cached_list..'\nReturn ' .. module.runable)
 		return
 	end
 	module.runable = 'xdg-open ' .. input
@@ -479,14 +516,15 @@ module.commands = {
 
 				return ""
 			end)
-			if(not input or input == "") then input='bash' end 
+			local shell = os.getenv('SHELL') or "/bin/bash"
+			if(not input or input == "") then input=shell end 
 			if(use_read) then
 				cmd = cmd..';read'
 			end
 			if(use_shell) then
-				cmd = ('%s -c %q'):format(os.getenv('SHELL'),cmd)
+				cmd = ('%s -c %q'):format(shell,cmd)
 			end
-			module.spawn((TERMINAL):format(input))
+			module.spawn((module.terminal):format(input))
 			
 		end
 	},
@@ -533,22 +571,22 @@ module.commands = {
 						if(type(v[2]) == "table") then
 							recurse(v[2],str..v[1]:lower()..'>')
 						else
-							list[#list+1] = {'m '..str..v[1]:lower(),v[2]}
+							list[#list+1] = {str..v[1]:lower(),v[2]}
 						end
 					end
 				end
 			end
 
 			recurse(old_menu,"")
-			return input,list
+			return input:sub(2),list
 		end
 	},
 	{"cl","CLear menu cache",match="^cl$",
 		update_text=function(self,input)
-			return module.set_text('Remove '..cacheFile..' to clear appmenu cache')
+			return module.set_text('Remove '..module.cacheFile..' to clear appmenu cache')
 		end,
 		runable=function(self,input)
-			os.execute('rm '..cacheFile)
+			os.execute('rm '..module.cacheFile)
 		end
 	},
 	-- {"wm","Window selection + move to screen",starts_with="ws ",
@@ -757,7 +795,7 @@ end
 
 
 
-local extension = io.open(MenuFolder..'/extensions.lua')
+local extension = io.open(module.MenuFolder..'/extensions.lua')
 if extension then 
 	local succ,err = pcall(function()
 		load(menu_contents:read('*a'))()

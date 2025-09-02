@@ -16,7 +16,7 @@ arg = arg or args
 -- Load the module first
 local succ,module = pcall(dofile,Module_Location)
 local err
-if succ then 
+if succ then
 	module.allow_markup = true
 else
 	err = module;module = nil;print(err)
@@ -43,7 +43,7 @@ local keys = {
 }
 
 function app:on_startup()
-	print('dies')
+
 	local win = Gtk.MessageDialog({
 		title = appTitle,
 		application = self,
@@ -53,7 +53,7 @@ function app:on_startup()
 	local box = win:get_child()
 	local entry = Gtk.Entry({ visible = true, valign = Gtk.Align.START})
 	local label = Gtk.Label({ visible = true, halign = Gtk.Align.START, label = "Loading appmenu module", use_markup = true, wrap=0})
-	
+
 	if not module then
 		box:add(label)
 		label.label = "Unable to init appmenu!\n" .. err..'\n\n\n\n'
@@ -81,7 +81,7 @@ function app:on_startup()
 			return true
 		end
 	}
-	module.move_cursor = function(pos) entry:set_position(pos);print(pos) end
+	module.move_cursor = function(pos) entry:set_position(pos); end
 	win.on_focus_out_event=function()
 		win:destroy()
 	end
