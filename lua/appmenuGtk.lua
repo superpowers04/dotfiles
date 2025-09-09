@@ -31,8 +31,12 @@ local appID = "Superpowers04.appmenu.lua"
 local appTitle = "Appmenu" 
 local lgi = require("lgi")
 local Gtk = lgi.require("Gtk", "3.0")
+local GLib = lgi.require('GLib')
 local app = Gtk.Application({ application_id = appID })
-
+module.xml_escape = function(a)
+	if not a then return nil end
+	return GLib.markup_escape_text(a,#a)
+end
 
 
 local keys = {
