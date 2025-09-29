@@ -79,6 +79,7 @@ focus_follows_mouse no
     # Start your launcher
     bindsym $mod+d exec $menu
     bindsym alt+space exec luajit "/home/steph/SRC/dotfiles/lua/appmenuGtk.lua"
+    bindsym $mod+t exec xfce4-terminal
 
     # Drag floating windows by holding down $mod and left mouse button.
     # Resize them with right mouse button + $mod.

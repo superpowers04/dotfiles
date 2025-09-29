@@ -10,11 +10,12 @@
         "tray",
         "sway/workspaces",
         "dwl/tags",
+        // "dwl/taskbar",
         // "wlr/workspaces",
         // "hyprland/workspaces",
         // "hyprland/mode",
-        // "wlr/taskbar"
-        "sway/scratchpad"
+        "wlr/taskbar"
+        // "sway/scratchpad"
         // "custom/media"
     ],
     "modules-center": [
@@ -60,7 +61,7 @@
     		"1","2","3","4","5","6","7","8","9",
     	],
         "tooltip": true,
-        // "tooltip-format": "hi"
+        // "tooltip-format": "hi" 
     },
     "keyboard-state": {
         "numlock": true,

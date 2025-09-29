@@ -15,6 +15,7 @@ local module = {
 	output = "",
 	text_buffer = "",
 	queued_cursor_pos = nil,
+	args = {}
 }
 
 -- Allows module to be accessed from anywhere. Remove this if you don't want that
@@ -56,6 +57,10 @@ end
 -- Gets called whenever the text cursor should be moved
 function module.move_cursor(pos)
 	-- STUB
+end
+-- Function that runs whenever it tries to exit
+function module.exit(...)
+	os.exit(...)
 end
 
 module.MenuFolder = os.getenv('HOME')..'/.config/SupersAppMenu/'
@@ -234,10 +239,27 @@ end
 
 
 
+-- Totally not stolen from awesome
 local xml_entity_names = { ["'"] = "&apos;", ["\""] = "&quot;", ["<"] = "&lt;", [">"] = "&gt;", ["&"] = "&amp;" };
-function module.xml_escape(text) -- Totally not stolen from awesome
+function module.xml_escape(text) 
     return text and text:gsub("['&<>\"]", xml_entity_names) or nil
 end
+function module.getBackend()
+	return os.getenv('WAYLAND_DISPLAY') and "WAYLAND" or os.getenv('DISPLAY') and "X11" or "TTY"
+end
+function module.getClipboard()
+	local backend = module.getBackend()
+	if(backend == "WAYLAND") then
+		return executeCmd('wl-paste -t TEXT')
+	elseif(backend == "X11") then 
+		return executeCmd('xclip -o')
+	else
+		return ""
+
+	end
+	
+end
+help = ('Detected as %s - %s'):format(module.getBackend(),help)
 function module.highlight_match(...)
 	local tbl = {...}
 	if(module.allow_markup) then
@@ -298,31 +320,33 @@ function module.updateInput(input)
 	local OLD = input
 	if(input:find(' (%d+)$')) then
 		input,index = input:match('^(.+) (%d+)$')
-		index = tonumber(index) or 1
-		input = input:lower():gsub('%s+$','') or OLD
+		index,input = (tonumber(index) or 1), input:lower():gsub('%s+$','') or OLD
 	end
-	input = input:gsub(' $',''):gsub('^ ','')
 	if #input == 0 or input == " " then return module.set_text() end
+	input = input:gsub(' $',''):gsub('^ ','')
 	local search,search_simple 
 	do
 		local stop_filter = false
-		search = input:gsub('.',
-			function(a) 
-				if(a=="'" or a=='"') then
-					stop_filter = not stop_filter
-					return ''
-				end
-				return stop_filter and a or a:upper() == a:lower() and ('('..a..")(.-)") 
-					or ('([%s%s])(.-)'):format(a:upper(),a:lower()) 
-			end)
+		local skipNext = false
+		search = input:gsub('.', function(a) 
+			if --[[ not skipNext and--]]  (a=="'" or a=='"') --[[ and (not stop_filter or stop_filter == a)--]]  then
+				stop_filter = stop_filter ~= a and a
+				return ''
+			end
+			-- skipNext = a=="\\"
+			-- if(skipNext) then return "" end
+			return stop_filter and a or a:upper() == a:lower() and ('('..a..")(.-)") 
+				or ('([%s%s])(.-)'):format(a:upper(),a:lower()) 
+		end)
 		stop_filter=false
+		skipNext = false
 		search_simple = input:lower():gsub('.',function(a)
-				if(a=="'" or a=='"') then
-					stop_filter = not stop_filter
-					return ''
-				end
-				return stop_filter and a or a..'.-'
-			end)
+			if not skipNext and (a=="'" or a=='"') --[[ and (not stop_filter or stop_filter == a)--]]  then
+				stop_filter = stop_filter ~= a and a
+				return ''
+			end
+			return stop_filter and a or a..'.-'
+		end)
 	end
 	local runables = {}
 	local exec = input:match('^([^ ]+)') or input:match('^"([^"]+)') or input:match('^\'([^\']+)')
@@ -452,8 +476,6 @@ function module.updateInput(input)
 	end
 	module.runable = 'xdg-open ' .. input
 	module.set_text('Nothing found out of '..#cached_list..'\nRun ' .. module.runable)
-
-
 end
 
 
@@ -467,6 +489,7 @@ local runLua = function(input)
 	end)
 	module.set_text(tostring(err))
 end
+
 module.commands = {
 	{"' '","Normal search", starts_with=" ",
 	},
@@ -560,6 +583,29 @@ module.commands = {
 			return
 		end
 	},
+--[[ 	{"pm","pacman",starts_with="pm ",
+		get_list=function(self,input)
+			local list=module.pacman_list 
+			if not list then
+				list = {}
+				-- Apparently io.popen doesn't work correctly with pacsift?
+				-- exec('pacsift > /tmp/pacsift list')
+				local a,b,c = exec('sh -c "/usr/bin/pacsift | grep \'\'"')
+				input = "  "..#tostring(a)
+				-- io.open('/tmp/pacsiftlist','r')
+				-- local content = file:read('*a')
+				-- file:close()
+				-- exec('rm /tmp/pacsiftlist')
+				-- local content = os.execute('pacsift')
+
+				-- for i in (content:gmatch('([^\n]+)')) do
+				-- 	list[#list+1] = {i}
+				-- end
+				-- module.pacman_list=list
+			end
+			return input:sub(3),list
+		end
+	},--]] 
 	{"m","Menu",starts_with="m ",
 		get_list=function(self,input)
 
@@ -608,6 +654,66 @@ module.commands = {
 	-- 	end
 	-- },
 
+	{"umnt(c),mnt(c)","(un)mount drives (Requires dkjson) Include c to use normal mount",match="^u?mntc?",
+		get_list=function(self,input)
+			local succ,json = pcall(require,'dkjson')
+			if not succ then 
+				print('NO CJSON')
+				module.set_text('Missing DKJSON!\n' .. json)
+				return "",{{'Missing DKJSON!\n'..json,''}}
+			end
+			local unmount = false
+ 			input = input:gsub(self.match,function(a) unmount = not not a:find('u') return "" end)
+
+			if not module.mountlist then
+				local mountlist = {}
+				module.mountlist = mountlist
+				local mounts = json.decode(executeCmd('lsblk -AJ -o PATH,MOUNTPOINTS,TYPE,SIZE,PARTLABEL'))
+				for _,mount in ipairs(mounts.blockdevices) do
+					if(mount.type == "part" and mount.path) then
+						local m = {}
+						mountlist[#mountlist + 1] = m
+						m.desc = (#mount.mountpoints == 1 and ("mounted at "..mount.mountpoints[1]) or (#mount.mountpoints.." mount points"))
+							.. "  -  " .. mount.size
+						if not mount.partlabel then mount.partlabel = mount.model end
+						if not mount.partlabel then mount.partlabel = mount.path:gsub('.+/','') end
+						m[1] = mount.partlabel
+						m.gn = '('..mount.path..")"
+						local USER = os.getenv('USER')
+
+						m[2] = function() module.run_in_terminal(('sudo %s %q %q'):format(unmount and "umount" or "mount -m",mount.path,("/run/media/%s/%s"):format(USER,mount.partlabel))) end
+					end
+				end
+			end
+			-- local list= {}
+			-- local recurse
+			-- recurse = function(l,str)
+			-- 	for i,v in pairs(l) do
+			-- 		if(type(v) == "table") then
+			-- 			if(type(v[2]) == "table") then
+			-- 				recurse(v[2],str..v[1]:lower()..'>')
+			-- 			else
+			-- 				list[#list+1] = {str..v[1]:lower(),v[2]}
+			-- 			end
+			-- 		end
+			-- 	end
+			-- end
+			local list = {}
+			for i,v in pairs(module.mountlist) do list[i]=v end
+			-- recurse(old_menu,"")
+			return input,list
+		end
+	},
+	-- {"dw","download clipboard and open with",starts_with="dw ",
+	-- 	runable=function(s,input)
+
+	-- 		-- module.spawn(('xdg-open %q'):format('https://duckduckgo.com/'..input:sub(3):gsub('[^a-zA-Z%.0-9,]',function(a) return ('%%%x'):format(a:byte()) end)))
+	-- 	end,
+	-- 	update_text=function(self,input)
+	-- 		module.set_text('Download ' .. input:sub(2),true)
+	-- 		return
+	-- 	end
+	-- },
 	{"d","duckduckgo search",starts_with="d ",
 		runable=function(s,input)
 
@@ -690,7 +796,6 @@ module.set_text = function(txt,plain)
 	if(txt == nil) then txt = generate_help();plain = false end
 	txt = tostring(txt)
 	local lp = '|'..(' '):rep(math.floor(module.locked_char_width))..'|'
-
 	if module.allow_markup then
 		module.output = (lp.. "\n"..txt):gsub('&.-;',function(a) return a:gsub('<.->','') end)
 		module.apply_text(module.output)
@@ -700,20 +805,13 @@ module.set_text = function(txt,plain)
 	module.output = (lp.. "\n"..txt):gsub('<.->','')
 	module.apply_text(module.output)
 	module._update_cursor_pos()
-	-- if plain then
-	-- 	textbox.text = lp.. "\n"..txt
-	-- else
-	-- 	local out = lp.."\n"..txt
-	-- 	-- textbox.markup = out
-	-- 	local succ,err = textbox:set_markup_silently(out)
-	-- 	if not succ then
-	-- 		textbox.text = lp.. "\n"..txt.."\nERR:"..tostring(err)
-	-- 	end
-	-- end
 end
-function module.finish(input)
+
+module.finish = function(input)
 	if not input or #input == 0 then return end
 	if(module.dmenu_mode) then
+		io.stdout:write(input)
+		module.exit()
 		return input
 	end
 	-- naughty.notify({
@@ -731,13 +829,13 @@ function module.finish(input)
 		end
 	end
 	if(runable) then
-		local _runable
+		local runable_tbl
 		if(type(runable) == "table") then -- TODO ADD RECENTS
 			if(type(runable.exec) == "function") then
 				return runable:exec(input)
 			end
-			_runable=runable
-			runable = runable[2]
+			runable_tbl=runable
+			runable = runable.runable or runable[2]
 			-- if(type(runable) == "string") then
 			-- 	for i,v in pairs(recents) do
 
@@ -750,7 +848,7 @@ function module.finish(input)
 			print('Running '..runable)
 			module.spawn(runable)
 		elseif(type(runable) == "function") then
-			runable(input,_runable)
+			runable(input,runable_tbl)
 		else
 			print('Attempt to run '..type(runable) .. "(expected string,function)")
 		end
@@ -760,7 +858,34 @@ end
 local current_desktop = (os.getenv('XDG-DESKTOP') or ""):lower()
 
 if(current_desktop == "cwc") then
-
+	module.commands[#module.commands+1]={"^c","Run lua code on cwc",
+		starts_with="$",
+		match = nil,
+		check = nil,
+		update_text=function(self,input)
+			return module.set_text("Run command" .. (input:sub(2,2) == '$' and " and return output here" or input:sub(2,2) == '>' and " and send a notification" or ""))
+		end,
+		runable=function(self,input)
+			input = input:sub(2)
+			if(input:sub(1,1) == '$') then
+				input = input:sub(2)
+				module.app_menu.visible = true
+				module.spawn.easy_async_with_shell(input,function(output)
+					module.set_text(output)
+					show_prompt()
+				end)
+			-- elseif(input:sub(1,1) == '/' or input:sub(1,1) == '~') then
+			-- 	module.app_menu.visible = true
+			-- 	module.spawn.with_shell(('clifm --open=%q'):format(input))
+			-- elseif(input:sub(1,1) == '$>') then
+			-- 	input = input:sub(2)
+			-- 	-- module.app_menu.visible = true
+			-- 	module.spawn(input ..' | notify-send')
+			else
+				module.spawn(input)
+			end
+		end
+	}
 	module.commands[#module.commands+1]={"w","(CWC ONLY) (W)indow selection + (C)lose, (M)ove to screen",
 		match="^w%w? ",
 		funcs = {

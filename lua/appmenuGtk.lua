@@ -55,8 +55,8 @@ function app:on_startup()
 	win.visible=true
 	win:set_decorated(false)
 	local box = win:get_child()
-	local entry = Gtk.Entry({ visible = true, valign = Gtk.Align.START})
-	local label = Gtk.Label({ visible = true, halign = Gtk.Align.START, label = "Loading appmenu module", use_markup = true, wrap=0})
+	local entry = Gtk.Entry({ visible = true})
+	local label = Gtk.Label({ visible = true, xalign = 0, label = "Loading appmenu module", use_markup = true, wrap=0})
 
 	if not module then
 		box:add(label)
@@ -81,10 +81,14 @@ function app:on_startup()
 		[keys.down] = module.key_functions.down,
 		[keys.enter] = function()
 			module.finish(module.text_buffer)
-			win:destroy()
+			module.exit(0)
 			return true
 		end
 	}
+	module.exit = function(...)
+		win:destroy()
+		os.exit(...)
+	end
 	module.move_cursor = function(pos) entry:set_position(pos); end
 	win.on_focus_out_event=function()
 		win:destroy()
