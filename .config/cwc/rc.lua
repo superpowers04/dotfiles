@@ -30,7 +30,6 @@ function spawn_shell(cmd,a,...)
 				else
 					args[#args+1] = ('-%s=%q'):format(#i ==1 and i or '-'..i,tostring(v))
 				end
-
 			end
 		end
 		for i,v in ipairs(a) do
@@ -97,7 +96,7 @@ gears.protected_call(require, "keybind")
 -- `cwc.commit()``
 
 -- pointer config
-cwc.pointer.set_cursor_size(22)
+cwc.pointer.set_cursor_size(24)
 cwc.pointer.set_inactive_timeout(0)
 cwc.pointer.set_edge_threshold(32)
 cwc.pointer.set_edge_snapping_overlay_color(0.1, 0.2, 0.3, 0.05)
@@ -114,11 +113,11 @@ cwc.kbd.xkb_options = ""
 cwc.client.set_border_color_focus(gears.color(
 	"linear:0,0:0,0:0,#b4b8e6:0.1,#c9a5d7:0.2,#e1a5d7:0.3,#f1d5e7:0.4,#ffffff:0.5,#f1d5e7:0.6,#e1a5d7:0.7,#e1a5d7:0.8,#c9a5d7:0.9,#b4b8e6:1.0,#b4b8e6"))
 cwc.client.set_border_color_normal(gears.color("#221b24"))
-cwc.client.set_border_width(2)
+cwc.client.set_border_width(1)
 
 
 -- screen/tag config
-cwc.screen.set_useless_gaps(1)
+cwc.screen.set_useless_gaps(0)
 
 -- plugin config
 if cwc.cwcle then
@@ -155,7 +154,7 @@ cwc.connect_signal("screen::new", function(screen)
 	screen:set_transform(enum.output_transform.TRANSFORM_NORMAL)
 
 	screen.allow_tearing = false
-	screen:set_mode(1920, 1080, 75)
+	-- screen:set_mode(1920, 1080)
 	-- notifySend(screen.description or screen.make)
 	if((screen.description or screen.name):find("KA242Y")) then
 		scrs.top = screen
@@ -165,7 +164,8 @@ cwc.connect_signal("screen::new", function(screen)
 	if(scrs.bot and scrs.top) then
 		local bot,top = scrs.bot,scrs.top
 		top:set_position(0,0)
-		top:set_custom_mode(1920,1080,73300)
+		top:set_custom_mode(1920,1080,73000)
+		bot:set_custom_mode(1920,1080)
 		bot:set_position(0,1080)
 	end
 	-- end
@@ -176,7 +176,7 @@ cwc.connect_signal("screen::new", function(screen)
 
 	-- set all "general" tags to master/stack mode by default
 	for i = 1, 9 do
-		tag.layout_mode(i, enum.layout_mode.MASTER, screen)
+		tag.layout_mode(i, enum.layout_mode.BSP, screen)
 	end
 
 end)
@@ -193,13 +193,19 @@ end)
 local client_rules = {
 	['aseprite'] = {
 		func = function(c)
-			client.floating = true
+			client.floating = false
 			client.fullscreen = false
-			client.maximised = false
-			client:center()
+			client:move_to_tag(9)
+			-- client:center()
 
 			-- client.geometry.width = 400
 			-- client.geometry.height = 400
+		end
+	},
+	['vivaldi'] = {
+		func = function(c)
+			client.floating = false
+			client.fullscreen = false
 		end
 	},
 	['copyq'] = {
@@ -211,25 +217,45 @@ local client_rules = {
 		end
 	},
 }
-
-
------------------------- CLIENT BEHAVIOR -----------------------------
-cwc.connect_signal("client::map", function(client)
-	-- unmanaged client is a popup/tooltip client in xwayland so lets skip it.
-	if client.unmanaged then return end
-	-- if client.focus then return end
-
+local to_be_init_clients = {}
+local function checkFullscreen(cl)
+	local client = cl or cwc.client.focused()
+	if not client then return end
+	local screen = client.screen
+	if client.fullscreen then
+		screen.allow_tearing = true
+	else
+		screen.allow_tearing = false
+	end
+end
+local function applyClientRules(client)
 	local client_rule = client_rules[client.appid:lower()] or client_rules[(client.name or ""):lower()]
 	if(client_rule) then
 		if(client_rule.func) then
-			if client_rule.func(client) then return end
-		else
-			for i,v in pairs(client_rule) do
+			if client_rule.func(client) then 
+				return true
+			end
+		end
+		if(client_rule.apply) then
+			for i,v in pairs(client_rule.apply) do
 				pcall(function()
 					client[i] = v
 				end)
 			end
 		end
+	end
+
+end
+
+function applyClientStuffs(client, hasInit)
+	-- unmanaged client is a popup/tooltip client in xwayland so lets skip it.
+	if client.unmanaged then return end
+	-- if client.focus then return end
+	client.maximized = false
+
+	if applyClientRules(client) then
+		if hasInit then to_be_init_clients[client] = nil end
+		return
 	end
 
 	if client.appid:find('pol.-agent') then
@@ -243,27 +269,37 @@ cwc.connect_signal("client::map", function(client)
 	-- 	return
 	-- end
 	local focused = cwc.client.focused()
-	if focused and focused.fullscreen then
-		client.floating = true
+	if not client.floating and focused and focused.fullscreen then
+		client:move_to_tag(focused.workspace < 9 and focused.workspace+1 or focused.workspace-1)
+	-- client.floating = true
+	else
+		client:raise()
+		client:focus()
 	end
 
 
-	client:raise()
-	client:focus()
 
-	-- the declarative rules isn't implemented yet so here is an example to do ruling.
-	-- It'll move any firefox app to the workspace 2 and maximize it also we moving to tag 2.
-	if client.appid == "firefox" then
-		client:move_to_tag(2)
-		client.screen.active_workspace = 2
-	end
-
+	-- -- the declarative rules isn't implemented yet so here is an example to do ruling.
+	-- -- It'll move any firefox app to the workspace 2 and maximize it also we moving to tag 2.
+	-- if client.appid == "firefox" then
+	-- 	client:move_to_tag(2)
+	-- 	client.screen.active_workspace = 2
+	-- end
 	-- center the client from the screen workarea if its floating or in floating layout.
 	if client.floating then client:center() end
+	client.maximized = false
+	if hasInit then to_be_init_clients[client] = nil end
+end
 
+
+------------------------ CLIENT BEHAVIOR -----------------------------
+cwc.connect_signal("client::map", function(client)
+	to_be_init_clients[client] = true
+	applyClientStuffs(client,true)
 end)
 
 cwc.connect_signal("client::unmap", function(client)
+	to_be_init_clients[client] = nil
 	-- exit when the unmapped client is not the focused client.
 	if client ~= cwc.client.focused() then return end
 	-- and for unmanaged client
@@ -283,21 +319,34 @@ cwc.connect_signal("client::unmap", function(client)
 end)
 
 cwc.connect_signal("client::focus", function(client)
+	if(to_be_init_clients[c]) then applyClientStuffs(c,true) end
 	-- by default when a client got focus it's not raised so we raise it.
 	-- should've been hardcoded to the compositor since that's the intuitive behavior
 	-- but it's nice to have option I guess.
+	client:set_border_color_rotation(cwc.pointer.position.x)
 	client:raise()
-	client:set_border_color_rotation(math.round(os.clock() * 10000))
+end)
+cwc.connect_signal("client::maximized", function(c)
+	c.maximized = false -- laughs at
 end)
 
 -- sloppic focus only in tiled client
 cwc.connect_signal("client::mouse_enter", function(c)
 -- 	local focused = cwc.client.focused()
 -- 	if focused and focused.floating then return end
-	client:set_border_color_rotation(math.round(os.clock() * 10000))
-
+	client:set_border_color_rotation(math.sin(cwc.pointer.position.x/client.geometry.width))
+	if(to_be_init_clients[c]) then applyClientStuffs(c,true) end
+	-- client:set_border_color_normal(gears.color("#421b44"))
 -- 	c:focus()
 end)
+-- -- sloppic focus only in tiled client
+-- cwc.connect_signal("client::mouse_exit", function(c)
+-- -- 	local focused = cwc.client.focused()
+-- -- 	if focused and focused.floating then return end
+-- 	client:set_border_color_rotation(math.sin(cwc.pointer.position.x/client.geometry.width))
+-- 	client:set_border_color_normal(gears.color("#221b24"))
+-- -- 	c:focus()
+-- end)
 
 cwc.connect_signal("container::insert", function(cont, client)
 	-- reset mark after first insertion in case forgot to toggle off mark

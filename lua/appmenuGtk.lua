@@ -55,8 +55,9 @@ function app:on_startup()
 	win.visible=true
 	win:set_decorated(false)
 	local box = win:get_child()
+
 	local entry = Gtk.Entry({ visible = true})
-	local label = Gtk.Label({ visible = true, xalign = 0, label = "Loading appmenu module", use_markup = true, wrap=0})
+	local label = Gtk.Label({ visible = true, xalign = 0, label = "Loading appmenu module", use_markup = true, wrap=0, selectable=true})
 
 	if not module then
 		box:add(label)
@@ -80,7 +81,7 @@ function app:on_startup()
 		[keys.up] = module.key_functions.up,
 		[keys.down] = module.key_functions.down,
 		[keys.enter] = function()
-			module.finish(module.text_buffer)
+			if module.finish(module.text_buffer) == true then return end
 			module.exit(0)
 			return true
 		end
@@ -94,6 +95,7 @@ function app:on_startup()
 		win:destroy()
 	end
 	win.on_key_press_event = function(self,key)
+
 		local func = key_functions[key.string] or key_functions[math.floor(key.keyval)]
 		if(func) then
 			if(func()) then
@@ -110,8 +112,10 @@ function app:on_startup()
 		end
 	end
 	entry.on_key_release_event = function(self,key)
+		if(entry.text == module.text_buffer) then return end
 		module.updateInput(entry.text)
 	end
+	
 
 end
 

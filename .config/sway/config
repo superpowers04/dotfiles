@@ -44,6 +44,7 @@ focus_follows_mouse no
 #
 # Example configuration:
 #
+#
   input type:touchpad {
       dwt enabled
       tap enabled
@@ -51,10 +52,15 @@ focus_follows_mouse no
       middle_emulation enabled
   }
    input type:pointer {
-        pointer_accel -0.7
+        pointer_accel -0.5
    }
    input type:tablet_tool {
         map_to_output HDMI-A-2
+   }
+#
+   input type:keyboard {
+#       xkb_layout "eu"
+        xkb_numlock enabled
    }
 #
 #   input type:keyboard {
@@ -80,6 +86,7 @@ focus_follows_mouse no
     bindsym $mod+d exec $menu
     bindsym alt+space exec luajit "/home/steph/SRC/dotfiles/lua/appmenuGtk.lua"
     bindsym $mod+t exec xfce4-terminal
+    bindsym $mod+alt+h exec luajit "/home/steph/SRC/dotfiles/lua/i3keys.lua"
 
     # Drag floating windows by holding down $mod and left mouse button.
     # Resize them with right mouse button + $mod.
@@ -262,18 +269,18 @@ exec /usr/lib/xdg-desktop-portal-wlr
 
 
 
-set $top HDMI-A-1
+set $top DP-4
 set $bot HDMI-A-2
-output $bot resolution 1920x1080 position 0,1080 
 output $top mode --custom 1920x1080@73Hz position 0,0
+output $bot resolution 1920x1080 position 0,1080 
 # output HDMI-A-1 mode --custom 1280x720@75Hz position 0,0
 # output HDMI-A-2 resolution 1920x1080 position 0,720
 
 
 
-bindsym $mod+u exec wlr-randr --output HDMI-A-1 --custom 1920x1080@73 && wlr-randr --output HDMI-A-2 --below HDMI-A-1
-bindsym $mod+ctrl+u exec wlr-randr --output HDMI-A-1 --custom 1920x1080@60 && wlr-randr --output HDMI-A-2 --below HDMI-A-1
-bindsym $mod+shift+u exec wlr-randr --output HDMI-A-1 --custom 1280x720@75 && wlr-randr --output HDMI-A-2 --below HDMI-A-1
+bindsym $mod+u exec wlr-randr --output $top --custom 1920x1080@73 && wlr-randr --output $bot --below $bot
+bindsym $mod+ctrl+u exec wlr-randr --output $top --custom 1920x1080@60 && wlr-randr --output $bot --below $bot
+bindsym $mod+shift+u exec wlr-randr --output $top --custom 1280x720@75 && wlr-randr --output $bot --below $bot
 
 
 exec waybar -c ~/.config/waybar/swaybar.jsonc

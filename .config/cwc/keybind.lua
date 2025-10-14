@@ -75,6 +75,44 @@ kbd.bind({mod.CTRL}, "Print",function()
 
 
 
+local _tostring
+function _tostring(tbl,as_index)
+	local tblType = type(tbl)
+	if(tblType ~= "table" ) then
+		if(tblType == "string") then
+			return ('%q'):format(tbl)
+		elseif tblType == "number" then
+			return tostring(tbl)
+		elseif tblType == "boolean" then
+			return tbl and "true" or "false"
+		end
+
+		return tostring(tbl)
+	end
+	local str = {}
+	local tblLength = #tbl
+	for i,v in pairs(tbl) do
+		local ti = type(i)
+		if(ti == "number" and i <= tblLength) then
+			v = _tostring(v)
+			if v then
+				str[#str+1] = v
+			end
+		else
+			i = _tostring(i,true)
+			if i then
+				v = _tostring(v)
+				if v then
+					str[#str+1] = ('[%s]=%s'):format(i,v)
+				end
+			end
+		end
+	end
+	return '{'..table.concat(str,',')..'}'
+	
+end
+
+
 ----------------- CLIENT COMMANDS ------------------------
 
 ------------------ general
@@ -354,8 +392,44 @@ kbd.bind({ MODKEY }, "bracketleft", function()
 end, { description = "focus the previous screen", group = "screen" })
 
 ----------------- tag
+local kp = {
+      "KP_End",
+      "KP_Down",
+      "KP_Next",
+      "KP_Left",
+      "KP_Begin",
+      "KP_Right",
+      "KP_Home",
+      "KP_Up",
+      "KP_Prior",
+}
 for i = 1, 9 do
 	local i_str = tostring(i)
+	kbd.bind(MODKEY, i_str, function()
+		local t = cwc.screen.focused():get_tag(i)
+		t:view_only()
+	end, { description = "view tag #" .. i_str, group = "tag" })
+
+	kbd.bind({ MODKEY, mod.CTRL }, i_str, function()
+		local t = cwc.screen.focused():get_tag(i)
+		t:toggle()
+	end, { description = "toggle tag #" .. i_str, group = "tag" })
+
+	kbd.bind({ MODKEY, mod.SHIFT }, i_str, function()
+		local c = cwc.client.focused()
+		if not c then return end
+
+		c:move_to_tag(i_str)
+	end, { description = "move focused client to tag #" .. i_str, group = "tag" })
+
+	kbd.bind({ MODKEY, mod.SHIFT, mod.CTRL }, i_str, function()
+		local c = cwc.client.focused()
+		if not c then return end
+
+		c:toggle_tag(i_str)
+	end, { description = "toggle focused client on tag #" .. i_str, group = "tag" })
+
+	local i_str = kp[i]
 	kbd.bind(MODKEY, i_str, function()
 		local t = cwc.screen.focused():get_tag(i)
 		t:view_only()
@@ -639,17 +713,56 @@ client_map:bind({ mod.SHIFT }, "l", resize_right, resize_right_opt)
 -- 	cwc.create_output(2)
 -- 	print(#cwc.screen.get())
 -- end, { description = "Create output", group = "dev" })
-kbd.bind({ MODKEY, mod.CTRL }, "slash", function()
+-- kbd.bind({ MODKEY, mod.CTRL }, "slash", function()
+-- 	local s = cwc.screen.focused()
+-- 	local c = cwc.client.focused()
+-- 	local pos = pointer.get_position()
+-- 	notifyPrint(c, s, c.tag, c.workspace)
+-- 	notifyPrint(c.appid)
+-- 	print(pos.x, pos.y)
+-- 	print(cwc.client.at(pos.x, pos.y))
+-- 	print(gears.debug.dump(c.geometry))
+-- 	print(s.active_tag, s.active_workspace)
+-- end, { description = "this just for debugging", group = "dev", exclusive = true, repeated = true })
+-- kbd.bind({ MODKEY, mod.CTRL }, "slash", function()
+-- 	local s = cwc.screen.focused()
+-- 	local c = cwc.client.focused()
+-- 	local pos = pointer.get_position()
+-- 	notifyPrint(c, s, c.tag, c.workspace)
+-- 	notifyPrint(c.appid)
+-- 	print(pos.x, pos.y)
+-- 	print(cwc.client.at(pos.x, pos.y))
+-- 	print(gears.debug.dump(c.geometry))
+-- 	print(s.active_tag, s.active_workspace)
+-- end, { description = "this just for debugging", group = "dev", exclusive = true, repeated = true })
+
+kbd.bind({ MODKEY }, "I", function()
 	local s = cwc.screen.focused()
 	local c = cwc.client.focused()
 	local pos = pointer.get_position()
-	notifyPrint(c, s, c.tag, c.workspace)
-	notifyPrint(c.appid)
-	print(pos.x, pos.y)
-	print(cwc.client.at(pos.x, pos.y))
-	print(gears.debug.dump(c.geometry))
-	print(s.active_tag, s.active_workspace)
-end, { description = "this just for debugging", group = "dev", exclusive = true, repeated = true })
+	local output = {}
+	local function addOut(obj,name,indexes)
+		output[#output+1] = name .. " :"
+		for _,i in pairs(indexes) do
+			local obj = obj
+			for id in i:gmatch('[^%.]+') do
+				obj = obj[id]
+			end
+			if(type(obj) == "function" ) then obj = obj() end
+			output[#output+1] = ('- %q: %s'):format(i,obj == nil and "nil" or _tostring(obj))
+		end
+	end
+	local succ,err =pcall(function()
+		addOut(cwc.client.focused(),"Focused Client",{'title','pid',"appid",'tag','workspace','geometry','x11','container','visible','floating','fullscreen','opacity','allow_tearing','decoration_mode','maximized','minimized','ontop','above','below'})
+		addOut(cwc.screen.focused(),"Focused Screen",{'name','description','width','height','refresh','workarea'})
+		addOut(pointer,"Pointer",{"get_position"})
+	end)
+	if not succ then output[#output+1] = err end
+
+	local f = io.open('/tmp/CWCINFO','w')
+	f:write(table.concat(output,"\n"))
+	f:close()
+end, { description = "this just for debugging", group = "dev" })
 local function repositionDisplays()
 	cwc.timer.new(2, function()
 
@@ -688,9 +801,10 @@ local screenOptsTbl = {
 		repositionDisplays()
 	end,
 	['set_res']=function(a)
-		cwc.screen.focused():set_custom_mode(a:match('(%d+).(%d+).(%d+)'))
+		local a,b,c = a:match('(%d+).(%d+).(%d+)')
+		cwc.screen.focused():set_custom_mode(tonumber(a),tonumber(b),tonumber(c))
 		notifySend('Focused custom mode set to ',a)
-		repositionDisplays()
+		repositionDisplays() 
 	end,
 	['Change refresh rate']=function()
 		local rate = cwc.screen.focused().refresh == 60 and 75 or 60
@@ -731,6 +845,7 @@ end
 
 kbd.bind(mod.LOGO, "S", function()
 -- local
+
 	cwc.spawn_with_shell(
 		('cwctl -c "screenOptions(\'`printf %q | rofi -dmenu _`\')" '):format(table.concat(scrOptsArr,'\\n')..'\\n'))
 end, { description = "Configure Screen", group = "launcher" })

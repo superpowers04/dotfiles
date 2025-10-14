@@ -73,6 +73,43 @@ local function exec(cmd)
 	f:close()
 	return c
 end
+
+
+local _tostring
+function _tostring(tbl)
+	local tblType = type(tbl)
+	if(tblType ~= "table" ) then
+		if(tblType == "string") then
+			return ('%q'):format(tbl)
+		elseif tblType == "number" then
+			return tostring(tbl)
+		elseif tblType == "boolean" then
+			return tbl and "true" or "false"
+		end
+
+		return nil
+	end
+	local str = {}
+	local tblLength = #tbl
+	for i,v in pairs(tbl) do
+		local ti = type(i)
+		if(ti == "number" and i <= tblLength) then
+			v = _tostring(v)
+			if v then
+				str[#str+1] = v
+			end
+		else
+			i = _tostring(i)
+			if i then
+				v = _tostring(v)
+				if v then
+					str[#str+1] = ('[%s]=%s'):format(i,v)
+				end
+			end
+		end
+	end
+	return '{'..table.concat(str,',')..'}'
+end
 executeCmd = function(a)
 	local e = io.popen(a,'r')
 	local r = e:read('*a')
@@ -80,6 +117,7 @@ executeCmd = function(a)
 	if(r:sub(-1) == "\n") then r=r:sub(0,-2) end
 	return r
 end
+local pack,unpack = pack or table.pack, unpack or table.unpack
 
 local help = [[Usage:
  (NAME)[ (ID)]
@@ -191,41 +229,6 @@ else
 				cached_list[#cached_list+1] = {name,cmd}
 			end
 		end
-		local _tostring
-		function _tostring(tbl)
-			local tblType = type(tbl)
-			if(tblType ~= "table" ) then
-				if(tblType == "string") then
-					return ('%q'):format(tbl)
-				elseif tblType == "number" then
-					return tostring(tbl)
-				elseif tblType == "boolean" then
-					return tbl and "true" or "false"
-				end
-
-				return nil
-			end
-			local str = {}
-			local tblLength = #tbl
-			for i,v in pairs(tbl) do
-				local ti = type(i)
-				if(ti == "number" and i <= tblLength) then
-					v = _tostring(v)
-					if v then
-						str[#str+1] = v
-					end
-				else
-					i = _tostring(i)
-					if i then
-						v = _tostring(v)
-						if v then
-							str[#str+1] = ('[%s]=%s'):format(i,v)
-						end
-					end
-				end
-			end
-			return '{'..table.concat(str,',')..'}'
-		end
 		cache = io.open(module.cacheFile,'w')
 		cache:write(('return %s'):format(_tostring({
 			list = list,
@@ -287,6 +290,7 @@ end
 function module.updateInput(input)
 	module.runable = false
 	module.text_buffer = input
+	local buffer = input
 	local executables=not module.dmenu_mode
 	local list_to_search = cached_list
 	if(executables) then
@@ -298,6 +302,7 @@ function module.updateInput(input)
 					input,list_to_search = cmd:get_list(input)
 					break;
 				elseif cmd.update_text then
+					if cmd.runable then module.runable = cmd.runable end
 					return cmd:update_text(input)
 				else
 					break;
@@ -386,7 +391,10 @@ function module.updateInput(input)
 	for i,v in ipairs(list_to_search) do
 		-- i = v[1]
 		local endingString = {'*'}
-		local matched_name,matched_generic_name, matched_description
+		local matched_name,matched_generic_name, matched_description,matched_at_all
+		if v.match and buffer:find(v.match) then
+			matched_at_all = true
+		end
 		matched_name = v[1]:lower():find(search_simple)
 		endingString[#endingString+1] = matched_name and xml(v[1]):gsub(search,module.highlight_match) or xml(v[1])
 		if(v.gn and include_gen_name) then
@@ -399,7 +407,7 @@ function module.updateInput(input)
 			endingString[#endingString+1] = ' <span size="x-small" color="#aaaaaa"> ('..(matched_description and xml(v.desc):gsub(search,module.highlight_match) or xml(v.desc)) ..')</span>'
 		end
 
-		if(matched_name or matched_description) then
+		if(matched_name or matched_description or matched_at_all) then
 			local result = table.concat(endingString,'')
 			list[#list+1] = result
 			runables[result] = v
@@ -496,7 +504,7 @@ module.commands = {
 	{"?","Search by description AND title",
 		starts_with="?",
 	},
-	{"$, $$, $>","Run shell command, Run shell command and return output here, Run shell command and send notification containing content",
+	{"$, $$","Run shell command, Run shell command and return output here",
 		starts_with="$",
 		match = nil,
 		check = nil,
@@ -507,18 +515,8 @@ module.commands = {
 			input = input:sub(2)
 			if(input:sub(1,1) == '$') then
 				input = input:sub(2)
-				module.app_menu.visible = true
-				module.spawn.easy_async_with_shell(input,function(output)
-					module.set_text(output)
-					show_prompt()
-				end)
-			-- elseif(input:sub(1,1) == '/' or input:sub(1,1) == '~') then
-			-- 	module.app_menu.visible = true
-			-- 	module.spawn.with_shell(('clifm --open=%q'):format(input))
-			-- elseif(input:sub(1,1) == '$>') then
-			-- 	input = input:sub(2)
-			-- 	-- module.app_menu.visible = true
-			-- 	module.spawn(input ..' | notify-send')
+				module.set_text(exec(input):gsub('%[.-[a-zA-Z]',''))
+				return true
 			else
 				module.spawn(input)
 			end
@@ -635,24 +633,6 @@ module.commands = {
 			os.execute('rm '..module.cacheFile)
 		end
 	},
-	-- {"wm","Window selection + move to screen",starts_with="ws ",
-	-- 	get_list=function(self,input)
-	-- 		local list= {}
-	-- 		for _,curClient in ipairs(client.get()) do
-	-- 			list[#list+1] = {'wm '..(curClient.name or curClient.class),function() curClient:jump_to();curClient:moveToScreen(mouse.screen) end}
-	-- 		end
-	-- 		return input,list
-	-- 	end
-	-- },
-	-- {"wc","Window selection + close",starts_with="wc ",
-	-- 	get_list=function(self,input)
-	-- 		local list= {}
-	-- 		for _,curClient in ipairs(client.get()) do
-	-- 			list[#list+1] = {'wm '..(curClient.name or curClient.class),function() curClient:close() end}
-	-- 		end
-	-- 		return input,list
-	-- 	end
-	-- },
 
 	{"umnt(c),mnt(c)","(un)mount drives (Requires dkjson) Include c to use normal mount",match="^u?mntc?",
 		get_list=function(self,input)
@@ -685,19 +665,6 @@ module.commands = {
 					end
 				end
 			end
-			-- local list= {}
-			-- local recurse
-			-- recurse = function(l,str)
-			-- 	for i,v in pairs(l) do
-			-- 		if(type(v) == "table") then
-			-- 			if(type(v[2]) == "table") then
-			-- 				recurse(v[2],str..v[1]:lower()..'>')
-			-- 			else
-			-- 				list[#list+1] = {str..v[1]:lower(),v[2]}
-			-- 			end
-			-- 		end
-			-- 	end
-			-- end
 			local list = {}
 			for i,v in pairs(module.mountlist) do list[i]=v end
 			-- recurse(old_menu,"")
@@ -724,12 +691,106 @@ module.commands = {
 			return
 		end
 	},
+	{"mr","modrinth search",starts_with="mr ",
+		runable={exec=function(s,input)
+			local link = s.last_input == input and s.link
+			or 'https://modrinth.com/mods?q='..input:sub(4):gsub('[^a-zA-Z%.0-9,]',function(a) return ('%%%x'):format(a:byte()) end) 
+			module.spawn(('xdg-open %q'):format())
+
+		end,tab=function(self,input)
+			local json_lib_exists,json_lib = pcall(require,'json')
+			if not json_lib_exists then
+				json_lib_exists,json_lib = pcall(require,'dkjson')
+			end
+			if not json_lib_exists then
+				self.last_text = 'No JSON library is available!'
+				return 
+			end
+
+			self.last_input = input
+			local index = 1
+			if(input:find(' %d+$')) then
+				input,index = input:match('^(.+) (%d+)$')
+			end
+			local json
+			if(self.last_json and input == self.last_input:match('^(.+) (%d+)$')) then
+				json = self.last_json
+			else
+				input = input:sub(4):gsub('[^a-zA-Z%.0-9,]',function(a) return ('%%%x'):format(a:byte()) end)
+
+
+				os.execute(('curl %q -o /tmp/modrinth_api_output'):format('https://api.modrinth.com/v2/search?query='..input))
+				local f = io.open('/tmp/modrinth_api_output','r')
+				json = f:read('*a')
+				self.last_json = json
+				f:close()
+			end
+			if(#json < 10) then
+				self.last_text = 'No results!'
+				return 
+			end
+			local meta = json_lib.decode(json)
+
+			if not meta then self.last_text = 'Invalid JSON recieved from modrinth!' return end 
+			local count = #meta.hits
+			local meta = meta.hits[tonumber(index or 1)]
+			if not meta then self.last_text = 'Invalid mod index' return end 
+
+			meta.result_count = count
+			meta.game_versions = table.concat(meta.versions,', ')
+			meta.categories = table.concat(meta.categories,', ')
+			self.link = 'https://modrinth.com/project/'..meta.slug
+			self.last_text = ([[$title$/$slug$
+			$description$
+			Client/Server: $client_side$/$server_side$
+			Versions: $game_versions$
+			Categories: $categories$
+
+			Press Enter to open
+			]]):gsub('\t',''):gsub("%$(.-)%$",function(a) return tostring(meta[a]) end)
+			return true
+		end
+		},
+		update_text=function(self,input)
+			if(self.runable.last_text and self.runable.last_input == input ) then
+
+				return module.set_text(self.runable.last_text)
+			end
+			if(self.runable.last_json ) then
+				local json_lib_exists,json_lib = pcall(require,'json')
+				if not json_lib_exists then
+					json_lib_exists,json_lib = pcall(require,'dkjson')
+				end
+				local txt = ""
+				for i,v in pairs(json_lib.decode(self.runable.last_json).hits) do
+					txt = txt .. ('%i - %s\n'):format(i,v.slug)
+				end
+				return module.set_text(txt)
+			end
+			module.set_text('Search Modrinth for ' .. input:sub(4) .. '\n Press tab to get info about mod',true)
+			return
+		end
+	},
 
 }
 
 module.key_functions = {
 	tab = function()
-		if(tostring(module.runable[2]):find('%.desktop$')) then
+		if not module.runable then return end
+		if(module.runable.tab) then
+			local tab = module.runable.tab
+			if(type(tab) == "function") then
+				tab(module.runable,module.text_buffer)
+				return true
+			end
+			module.text_buffer = module.runable.tab
+			module.queued_text_pos = (#module.text_buffer)
+			return true
+		elseif(type(module.runable) == "string") then
+			module.text_buffer = module.runable
+			module.queued_text_pos = (#module.text_buffer)
+			return true
+		elseif(tostring(module.runable[2]):find('%.desktop$')) then
 			local file = io.open(tostring(module.runable[2]),'r')
 			local content = file:read('*a')
 			file:close()
@@ -737,14 +798,6 @@ module.key_functions = {
 			if newBuffer then
 				module.text_buffer = newBuffer:gsub('%%.',''):gsub('^%s+',''):gsub('%s+$','')
 			end
-			module.queued_text_pos = (#module.text_buffer)
-			return true
-		elseif(module.runable.tab) then
-			module.text_buffer = module.runable.tab
-			module.queued_text_pos = (#module.text_buffer)
-			return true
-		elseif(type(module.runable) == "string") then
-			module.text_buffer = module.runable
 			module.queued_text_pos = (#module.text_buffer)
 			return true
 
@@ -795,8 +848,10 @@ end
 module.set_text = function(txt,plain)
 	if(txt == nil) then txt = generate_help();plain = false end
 	txt = tostring(txt)
-	local lp = '|'..(' '):rep(math.floor(module.locked_char_width))..'|'
+	local lp = ('-'):rep(math.floor(module.locked_char_width))
+	-- '|'..(' '):rep(math.floor(module.locked_char_width-1))..'|'
 	if module.allow_markup then
+		-- print(module.output)
 		module.output = (lp.. "\n"..txt):gsub('&.-;',function(a) return a:gsub('<.->','') end)
 		module.apply_text(module.output)
 		module._update_cursor_pos()
@@ -824,7 +879,11 @@ module.finish = function(input)
 		if((cmd.starts_with and input:sub(1,#cmd.starts_with) ==cmd.starts_with) or cmd.match and input:find(cmd.match)) then
 			executables=false
 			if(cmd.runable) then
-				return cmd:runable(input)
+				if(type(cmd.runable) == "function") then
+					return cmd:runable(input)
+				end
+				runable = cmd.runable
+				break
 			end
 		end
 	end
@@ -857,6 +916,17 @@ module.finish = function(input)
 end
 local current_desktop = (os.getenv('XDG-DESKTOP') or ""):lower()
 
+local extension = io.open(module.MenuFolder..'/extensions.lua')
+if extension then 
+	local succ,err = pcall(function()
+		load(menu_contents:read('*a'))()
+	end)
+	menu_contents:close()
+end
+
+
+local current_desktop = (os.getenv('XDG_CURRENT_DESKTOP') or os.getenv('XDG_DESKTOP') or ""):lower()
+
 if(current_desktop == "cwc") then
 	module.commands[#module.commands+1]={"^c","Run lua code on cwc",
 		starts_with="$",
@@ -884,6 +954,54 @@ if(current_desktop == "cwc") then
 			else
 				module.spawn(input)
 			end
+		end
+	}
+
+	module.commands[#module.commands+1]={"cw","(CWC ONLY) CWC stuff",
+		-- match="^cw",
+		starts_with="cw",
+		funcs = {
+			{'cw res WIDTH HEIGHT REFRESH',
+			function(_,self) 
+				local a,b,c = module.text_buffer:match('(%d+).(%d+).(%d+)')
+				if not a then module.set_text('Missing width') return true end
+				if not b then module.set_text('Missing height') return true end
+				if c then c = ','..c end
+				local cmd = ('cwctl -c "cwc.screen.focused():set_custom_mode(%i,%i%s)"'):format(a,b,c)
+				os.execute(cmd)
+				os.execute(('notify-send'):format(cmd))
+				return false
+			end,
+			match="^cw res",
+			desc="Set resolution of current display",
+			tab='cw res '
+			},
+			-- wm=function(_,self) self.client:jump_to() end,
+			-- wc=function(_,self) os.execute(('cwctl -c "local c = cwc.client.get()[%i];c:focus();c:move_to_screen()"'):format(self.client_id)) end,
+		},
+		get_list=function(self,input)
+
+			local list = self.funcs
+
+
+
+			-- local f = input:sub(1,2):gsub(' $',''):lower()
+			-- local func = self.funcs[f] or self.funcs.w
+			-- if(os.getenv('XDG_CURRENT_DESKTOP') == "cwc") then
+			-- 	local e = io.popen(('cwctl -c %q'):format([[local str = {};for i,v in pairs(cwc.client.get()) do str[#str+1] = v.name and ('%s - %s'):format(v.name,v.appid) or v.appid end;return table.concat(str,'\n')]]),'r')
+			-- 	local content = e:read('*a')
+			-- 	e:close()
+			-- 	local i = 0
+			-- 	for clientName in content:gmatch('[^\n]+') do
+			-- 		i = i + 1
+			-- 		list[i] = {f.. ' ' .. clientName,func,client_id = i}
+			-- 	end
+			-- end
+			-- local list= {}
+			-- for _,cur_client in ipairs(client.get()) do
+			-- 	list[#list+1] = {f..' '..(cur_client.name or cur_client.class),func,client=cur_client}
+			-- end
+			return input,list
 		end
 	}
 	module.commands[#module.commands+1]={"w","(CWC ONLY) (W)indow selection + (C)lose, (M)ove to screen",
@@ -917,15 +1035,5 @@ if(current_desktop == "cwc") then
 	}
 end
 
-
-
-
-local extension = io.open(module.MenuFolder..'/extensions.lua')
-if extension then 
-	local succ,err = pcall(function()
-		load(menu_contents:read('*a'))()
-	end)
-	menu_contents:close()
-end
 
 return module
