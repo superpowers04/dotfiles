@@ -9,7 +9,8 @@
 
 
 -- TODO ADD MARKUP AFTER INSTEAD OF DURING
-
+-- TODO HISTORY
+-- TOD FAVS
 
 local module = {
 	output = "",
@@ -63,7 +64,10 @@ function module.exit(...)
 	os.exit(...)
 end
 
+module.on_error = error
+
 module.MenuFolder = os.getenv('HOME')..'/.config/SupersAppMenu/'
+module.HistoryFile = module.MenuFolder..'history.lua' 
 module.cacheFile = '/tmp/APPMENU_CACHE-'..os.getenv('USER')..'.lua'
 
 
@@ -144,7 +148,7 @@ end
 
 local recents = {}
 local list, cached_list, exelist, paths, runable = {}, {}, {}, {""},false
-
+local home_dir = os.getenv('HOME')
 if(appmenuList) then
 	cached_list = appmenuList
 	module.dmenu_mode = true
@@ -162,7 +166,7 @@ else
 	end
 	if not cache then
 		local desktop_file_dirs = {
-			os.getenv('HOME').."/.local/share/applications",
+			home_dir.."/.local/share/applications",
 			'/usr/share/applications'
 		}
 		do
@@ -175,7 +179,7 @@ else
 				end
 			end
 			do
-				local f = os.getenv('HOME').."/.local/bin"
+				local f = home_dir.."/.local/bin"
 				if not path_cache[f] then
 					paths[#paths+1]=f
 				end
@@ -368,12 +372,12 @@ function module.updateInput(input)
 				list[#list+1] = TEXT
 				runables[TEXT] = path .. input:sub(#exec+1)
 				local extra = input:sub(#exec)
-				local path = extra:match(' (/)$') or extra:match(' (/[^ ]+)$') or extra:match(' "([^ ][^"]+)$')
+				local path = extra:match(' ([~/])$') or extra:match(' ([~/]/?[^ ]+)$') or extra:match(' "([^ ][^"]+)$')
 				if(path) then
+					if(path:sub(1,1) == "~") then path = home_dir .. path:sub(2) end
 					sort = false
 					local pathFolder = path:match('.+/') or path..'/'
 					local out = executeCmd(('find %q -maxdepth 1 -mindepth 1 -type d'):format(pathFolder)):gsub('\n','/\n') 
-
 					out = (out == "" and "" or out.."\n")..executeCmd(('find %q -maxdepth 1 -mindepth 1 -type f'):format(pathFolder))
 					for result in out:gmatch('[^\n]+') do
 						if(result:sub(0,#path) == path) then
@@ -905,16 +909,18 @@ module.finish = function(input)
 		if(type(runable) == "string") then
 			if(runable:sub(-8)==".desktop") then runable = ('exo-open %q'):format(runable) end
 			print('Running '..runable)
-			module.spawn(runable)
+			return module.spawn(runable)
 		elseif(type(runable) == "function") then
-			runable(input,runable_tbl)
+			return runable(input,runable_tbl)
 		else
 			print('Attempt to run '..type(runable) .. "(expected string,function)")
 		end
 		return
 	end
 end
-local current_desktop = (os.getenv('XDG-DESKTOP') or ""):lower()
+
+
+
 
 local extension = io.open(module.MenuFolder..'/extensions.lua')
 if extension then 
