@@ -122,7 +122,7 @@
     "clock": {
         // "timezone": "America/New_York",
         "format": "{:%x %H:%M}",
-        "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
+        "tooltip-format": "<big>{:%H:%M %DDD}</big>\n<tt><small>{calendar}</small></tt>",
         "format-alt": "{:%Y-%m-%d}"
     },
     "cpu": {
@@ -130,7 +130,7 @@
         // "tooltip": false
     },
     "memory": {
-        "format": "Mem: {}%"
+        "format": "Mem: {used:0.1f}G/{total:0.1f}G",
     },
     "temperature": {
         // "thermal-zone": 2,
