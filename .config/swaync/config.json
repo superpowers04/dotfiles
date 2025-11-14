@@ -15,7 +15,7 @@
   "notification-icon-size": 64,
   "notification-body-image-height": 100,
   "notification-body-image-width": 200,
-  "notification-window-preferred-output":"HDMI-A-2",
+  "notification-window-preferred-output":"DP-4",
   "timeout": 10,
   "timeout-low": 5,
   "timeout-critical": 0,

@@ -40,6 +40,8 @@ module.allow_markup = false
 module.dmenu_mode = false 
 -- Command to use for terminal
 module.terminal = "xfce4-terminal -e %q"
+-- Command to use by default
+module.def_command = "rifle %q"
 
 module.locked_char_width = 300
 
@@ -486,7 +488,7 @@ function module.updateInput(input)
 		module.set_text('Nothing found out of '..#cached_list..'\nReturn ' .. module.runable)
 		return
 	end
-	module.runable = 'xdg-open ' .. input
+	module.runable = module.def_command:format(input)
 	module.set_text('Nothing found out of '..#cached_list..'\nRun ' .. module.runable)
 end
 
@@ -651,7 +653,6 @@ module.commands = {
 
 			if not module.mountlist then
 				local mountlist = {}
-				module.mountlist = mountlist
 				local mounts = json.decode(executeCmd('lsblk -AJ -o PATH,MOUNTPOINTS,TYPE,SIZE,PARTLABEL'))
 				for _,mount in ipairs(mounts.blockdevices) do
 					if(mount.type == "part" and mount.path) then
@@ -668,6 +669,7 @@ module.commands = {
 						m[2] = function() module.run_in_terminal(('sudo %s %q %q'):format(unmount and "umount" or "mount -m",mount.path,("/run/media/%s/%s"):format(USER,mount.partlabel))) end
 					end
 				end
+				module.mountlist = mountlist
 			end
 			local list = {}
 			for i,v in pairs(module.mountlist) do list[i]=v end
@@ -688,7 +690,7 @@ module.commands = {
 	{"d","duckduckgo search",starts_with="d ",
 		runable=function(s,input)
 
-			module.spawn(('xdg-open %q'):format('https://duckduckgo.com/'..input:sub(3):gsub('[^a-zA-Z%.0-9,]',function(a) return ('%%%x'):format(a:byte()) end)))
+			module.spawn(('%s %q'):format(module.def_command,'https://duckduckgo.com/'..input:sub(3):gsub('[^a-zA-Z%.0-9,]',function(a) return ('%%%x'):format(a:byte()) end)))
 		end,
 		update_text=function(self,input)
 			module.set_text('Search duckduckgo for ' .. input:sub(2),true)
@@ -699,7 +701,7 @@ module.commands = {
 		runable={exec=function(s,input)
 			local link = s.last_input == input and s.link
 			or 'https://modrinth.com/mods?q='..input:sub(4):gsub('[^a-zA-Z%.0-9,]',function(a) return ('%%%x'):format(a:byte()) end) 
-			module.spawn(('xdg-open %q'):format())
+			module.spawn(('%s %q'):format(module.def_command,link))
 
 		end,tab=function(self,input)
 			local json_lib_exists,json_lib = pcall(require,'json')
