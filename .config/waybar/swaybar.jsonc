@@ -8,52 +8,43 @@
     // Choose the order of the modules
     "modules-left": [
         "tray",
-        "sway/workspaces",
         // "wlr/workspaces",
         // "hyprland/workspaces",
         // "hyprland/mode",
         // "wlr/taskbar"
-        "sway/scratchpad"
+        "sway/mode",
+        "sway/scratchpad",
+        "sway/window"
         // "custom/media"
     ],
     "modules-center": [
-        "sway/window"
+        "sway/workspaces"
     ],
     "modules-right": [
-        // "mpd",
         "pulseaudio",
         "network",
         "power-profiles-daemon",
         "cpu",
         "memory",
         "temperature",
-        // "backlight",
-        // "keyboard-state",
-        // "sway/language",
         "keyboard-state",
         "clock",
         "custom/swaync",
-        "custom/floating",
-        // "custom/maximize",
+        // "custom/floating",
         "custom/close"
     ],
     // Modules configuration
-    // "sway/workspaces": {
-    //     "disable-scroll": true,
-    //     "all-outputs": true,
-    //     "warp-on-scroll": false,
-    //     "format": "{name}: {icon}",
-    //     "format-icons": {
-    //         "1": "",
-    //         "2": "",
-    //         "3": "",
-    //         "4": "",
-    //         "5": "",
-    //         "urgent": "",
-    //         "focused": "",
-    //         "default": ""
-    //     }
-    // },
+    "sway/workspaces": {
+        // "disable-scroll": true,
+        "all-outputs": false,
+        // "warp-on-scroll": false,
+        "format": "{icon}{value}{icon}",
+        "format-icons": {
+            "urgent": "!",
+            "focused": "",
+            "default": ""
+        }
+    },
     "dwl/tags": {
     	"tag-labels":[
     		"1","2","3","4","5","6","7","8","9",
@@ -64,15 +55,15 @@
     "keyboard-state": {
         "numlock": true,
         "capslock": true,
-        "format": "{name} {icon}",
+        "format": "{name}{icon}",
         "format-icons": {
-            "locked": "",
-            "unlocked": ""
+            "locked": "☒",
+            "unlocked": "☐"
         }
     },
-    "sway/mode": {
-        "format": "<span style=\"italic\">{}</span>"
-    },
+    // "sway/mode": {
+    //     "format": "<span style=\"italic\">{}</span>"
+    // },
     "sway/scratchpad": {
         "format": "{icon} {count}",
         "show-empty": false,
@@ -117,22 +108,23 @@
         // "icon-size": 21,
         "spacing": 10
     },
+
     "clock": {
         // "timezone": "America/New_York",
-        "format": "{:%x %H:%M}",
-        "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
+        "format": "{:%m/%d %H:%M}",
+        "tooltip-format": "<big>{:%H:%M %DDD}</big>\n<tt><small>{calendar}</small></tt>",
         "format-alt": "{:%Y-%m-%d}"
     },
     "cpu": {
-        "format": "{usage}% ",
-        "tooltip": false
+        "format": "CPU: {usage}%",
+        // "tooltip": false
     },
     "memory": {
-        "format": "{}% "
+        "format": "Mem: {used:0.1f}G",
     },
     "temperature": {
         // "thermal-zone": 2,
-        // "hwmon-path": "/sys/class/hwmon/hwmon2/temp1_input",
+        "hwmon-path": "/sys/class/hwmon/hwmon1/temp1_input",
         "critical-threshold": 80,
         "format-critical": "{temperatureC}°C!!",
         "format": "{temperatureC}°C",
@@ -198,7 +190,7 @@
             "car": "",
             "default": ["", "", ""]
         },
-        "on-click": "pavucontrol"
+        "on-click": "pavucontrol-qt"
     },
     "custom/media": {
         "format": "{icon} {}",
@@ -229,7 +221,8 @@
     },
     "custom/floating": {
         "format" : "|^|",
-        "on-click":"swaymsg floating toggle"
+        "on-click":"swaymsg floating toggle",
+        "tooltip-format": "Discord"
 		// "tooltip": false,
     },
     "custom/swaync": {

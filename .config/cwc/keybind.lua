@@ -8,10 +8,10 @@ local cwc = cwc
 
 local enum = cful.enum
 local mod = enum.modifier
+local MODKEY = mod.LOGO
 local button = enum.mouse_btn
 local direction = enum.direction
 
-local MODKEY = mod.LOGO
 local TERMINAL = "xfce4-terminal"
 
 -- prevent hotkey conflict on nested session
@@ -689,24 +689,24 @@ local client_map = kbd.create_bindmap()
 client_map.active = false
 
 -- enter this submap by pressing MOD + W in the default map
-kbd.bind({ MODKEY }, "w", function()
-	client_map:active_only()
-end, { description = "activate client vim movement keymap", group = "keymap" })
+-- kbd.bind({ MODKEY }, "w", function()
+-- 	client_map:active_only()
+-- end, { description = "activate client vim movement keymap", group = "keymap" })
 
--- exit this submap by pressing Esc
-client_map:bind({}, "Escape", function()
-	client_map.active = false
-end)
+-- -- exit this submap by pressing Esc
+-- client_map:bind({}, "Escape", function()
+-- 	client_map.active = false
+-- end)
 
-client_map:bind({}, "h", move_left, move_left_opt)
-client_map:bind({}, "j", move_down, move_down_opt)
-client_map:bind({}, "k", move_up, move_up_opt)
-client_map:bind({}, "l", move_right, move_right_opt)
+-- client_map:bind({}, "h", move_left, move_left_opt)
+-- client_map:bind({}, "j", move_down, move_down_opt)
+-- client_map:bind({}, "k", move_up, move_up_opt)
+-- client_map:bind({}, "l", move_right, move_right_opt)
 
-client_map:bind({ mod.SHIFT }, "h", resize_left, resize_left_opt)
-client_map:bind({ mod.SHIFT }, "j", resize_down, resize_down_opt)
-client_map:bind({ mod.SHIFT }, "k", resize_up, resize_up_opt)
-client_map:bind({ mod.SHIFT }, "l", resize_right, resize_right_opt)
+-- client_map:bind({ mod.SHIFT }, "h", resize_left, resize_left_opt)
+-- client_map:bind({ mod.SHIFT }, "j", resize_down, resize_down_opt)
+-- client_map:bind({ mod.SHIFT }, "k", resize_up, resize_up_opt)
+-- client_map:bind({ mod.SHIFT }, "l", resize_right, resize_right_opt)
 
 -------------------- DEV ------------------------
 -- kbd.bind({ MODKEY }, "F11", function() --

@@ -13,6 +13,11 @@ window#waybar {
     transition-property: background-color;
     transition-duration: .5s;
 }
+window:hover {
+    background-color: #461d46;
+    transition-property: background-color;
+    transition-duration: .5s;
+}
 
 window#waybar.hidden {
     opacity: 0.2;
@@ -31,7 +36,6 @@ window#waybar.termite {
 }
 
 window#waybar.chromium {
-    
     border: none;
 }
 
@@ -65,15 +69,17 @@ button:hover {
 }
 #workspaces button {
     padding: 0 2px;
+    color: #64727D;
 }
 
 #workspaces button:hover {
     background: rgba(0, 0, 0, 0.2);
+    color: #ffffff;
 }
 
 #workspaces button.focused {
-    color: #64727D;
-    box-shadow: inset 0 -3px #ffffff;
+    color:#ffaaff;
+    box-shadow: inset 0 -3px #ffaaff;
 }
 
 #workspaces button.urgent {

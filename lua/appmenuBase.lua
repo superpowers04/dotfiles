@@ -38,6 +38,9 @@ module.allow_markup = false
 
 -- Script will just return the input when module.finish is called and some other things will be disabled
 module.dmenu_mode = false 
+
+-- Allow history
+module.enable_history = true
 -- Command to use for terminal
 module.terminal = "xfce4-terminal -e %q"
 -- Command to use by default
@@ -123,6 +126,8 @@ executeCmd = function(a)
 	if(r:sub(-1) == "\n") then r=r:sub(0,-2) end
 	return r
 end
+module.top_text = ""
+module.bottom_text = ""
 local pack,unpack = pack or table.pack, unpack or table.unpack
 
 local help = [[Usage:
@@ -256,6 +261,37 @@ end
 function module.getBackend()
 	return os.getenv('WAYLAND_DISPLAY') and "WAYLAND" or os.getenv('DISPLAY') and "X11" or "TTY"
 end
+function module.get_history(runable)
+	
+end
+function module.updateHistory(runable)
+	local succ,err = pcall(function()
+		local file = io.open(module.HistoryFile,'r')
+		local history = {}
+		if file then
+			history = load(file:read('*a'))
+			file:close()
+		end
+		local found_match = false
+		for i,hist_run in ipairs(history) do
+			if(hist_run[1] == runable[1] or hist_run.tab == runable.tab) then
+				hist_run.uses = hist_run.uses+1
+				found_match = true
+			end
+		end
+		if not found_match then
+			runable.uses=1
+			history[#history+1] = runable
+		end
+
+
+		local file = io.open(module.HistoryFile,'w')
+		
+		file:write('return '.._tostring(history))
+		-- _tostring(tbl)
+	end)
+	if not succ then print(err) end
+end
 function module.getClipboard()
 	local backend = module.getBackend()
 	if(backend == "WAYLAND") then
@@ -266,7 +302,6 @@ function module.getClipboard()
 		return ""
 
 	end
-	
 end
 help = ('Detected as %s - %s'):format(module.getBackend(),help)
 function module.highlight_match(...)
@@ -296,6 +331,8 @@ end
 function module.updateInput(input)
 	module.runable = false
 	module.text_buffer = input
+	module.top_text = ""
+	module.bottom_text = ""
 	local buffer = input
 	local executables=not module.dmenu_mode
 	local list_to_search = cached_list
@@ -304,6 +341,13 @@ function module.updateInput(input)
 		for i,cmd in pairs(module.commands) do
 			if((cmd.starts_with and input:sub(1,#cmd.starts_with) ==cmd.starts_with) or cmd.match and input:find(cmd.match)) then
 				executables=false
+				if(cmd.top_text) then
+					module.top_text = module.top_text..cmd.top_text
+				end
+				if(cmd.bottom_text) then
+					module.bottom_text = module.bottom_text..cmd.bottom_text
+				end
+				module.set_text(('%s - %s'):format(cmd[1],cmd[2]))
 				if(cmd.get_list) then
 					input,list_to_search = cmd:get_list(input)
 					break;
@@ -576,12 +620,14 @@ module.commands = {
 	-- 	end
 	-- },
 	{"^","Run lua code", starts_with="^",
+		top_text="Lua output: ",
 		update_text=function(self,input)
 			runLua(input:sub(2))
 			return
 		end
 	},
 	{"[0-9+%-^%/*&><]","Calculator/Lua code", match="^[0-9+%-^%/*&><]+$",
+		top_text="Calculator output: ",
 		update_text=function(self,input)
 			runLua(input)
 			return
@@ -853,7 +899,7 @@ module._update_cursor_pos = function()
 end
 module.set_text = function(txt,plain)
 	if(txt == nil) then txt = generate_help();plain = false end
-	txt = tostring(txt)
+	txt = module.top_text..tostring(txt)..module.bottom_text
 	local lp = ('-'):rep(math.floor(module.locked_char_width))
 	-- '|'..(' '):rep(math.floor(module.locked_char_width-1))..'|'
 	if module.allow_markup then
@@ -934,6 +980,23 @@ end
 
 
 local current_desktop = (os.getenv('XDG_CURRENT_DESKTOP') or os.getenv('XDG_DESKTOP') or ""):lower()
+
+if(module.enable_history) then
+	module.commands[#module.commands+1]={"h","Run past queries",
+		starts_with="h ",
+		match = nil,
+		check = nil,
+		-- update_text=function(self,input)
+		-- 	return module.set_text("Run command" .. (input:sub(2,2) == '$' and " and return output here" or input:sub(2,2) == '>' and " and send a notification" or ""))
+		-- end,
+		get_list=function(self,input)
+			local list = module.get_history()
+
+
+			return input,list
+		end
+	}
+end
 
 if(current_desktop == "cwc") then
 	module.commands[#module.commands+1]={"^c","Run lua code on cwc",
@@ -1043,5 +1106,18 @@ if(current_desktop == "cwc") then
 	}
 end
 
+-- for i,v in pairs(module) do
+-- 	if(type(v) == "function") then
+-- 		modules[i] = function(...)
+-- 			local a = pack(pcall(v,...))
+-- 			if(not a[1]) then
+-- 				module.on_error(a[2])
+-- 				return nil
+-- 			end
+-- 			table.remove(a,1)
+-- 			return unpack(a)
+-- 		end
+-- 	end
+-- end
 
 return module

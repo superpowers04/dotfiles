@@ -276,7 +276,7 @@ set $bot DP-4
 input type:tablet_tool {
     map_to_output $bot
 }
-exec_always wlr-randr --output $top --custom 1920x1080@60 && wlr-randr --output $bot --custom 1920x1080@73 --below $top
+exec_always wlr-randr --output $top --custom 1920x1080@73 && wlr-randr --output $bot --custom 1920x1080@73 --below $top
 bindsym $mod+u exec wlr-randr --output $top --custom 1920x1080@73 && wlr-randr --output $bot --custom 1920x1080@73 --below $top
 bindsym $mod+shift+u exec wlr-randr --output $top --custom 1280x720@75 && wlr-randr --output $bot --custom 1280x720@75 --below $top
 bindsym $mod+control+u exec wlr-randr --output $top --custom 1280x720@60 && wlr-randr --output $bot --custom 1280x720@60  --below $top
@@ -286,8 +286,7 @@ bindsym $mod+control+u exec wlr-randr --output $top --custom 1280x720@60 && wlr-
 
 
 
-
-exec waybar -c ~/.config/waybar/swaybar.jsonc
+exec_always killall waybar; waybar -c ~/.config/waybar/swaybar.jsonc
 exec lxqt-policykit-agent
 exec swaync
 

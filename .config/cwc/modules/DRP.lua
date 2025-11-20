@@ -63,5 +63,5 @@ function module.updateDRP(c)
 	end
 end
 
--- cwc.connect_signal("client::prop::title", module.updateDRP)
--- cwc.connect_signal("client::raised", module.updateDRP)
+--cwc.connect_signal("client::prop::title", module.updateDRP)
+--cwc.connect_signal("client::raised", module.updateDRP)

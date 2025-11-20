@@ -4,7 +4,6 @@ local cwc = cwc
 
 -- autostart app
 -- cwc.spawn_with_shell('dunst -conf "$HOME/.config/dunstrc" --startup_notification')
-cwc.spawn_with_shell('swaync')
 cwc.spawn_with_shell('lxqt-policykit-agent')
 cwc.spawn_with_shell("swaybg --output '*' --color '#222222'")
 cwc.spawn_with_shell("waybar")
@@ -25,7 +24,8 @@ cwc.timer.new(2, function()
 	cwc.spawn_with_shell('xsettingsd')
 	cwc.spawn_with_shell('xfsettingsd')
 	cwc.spawn_with_shell('/usr/lib/xdg-desktop-portal-wlr')
-	cwc.spawn { "aria2tray", "--hide-window" }
+	-- cwc.spawn { "aria2tray", "--hide-window" }
+	cwc.spawn_with_shell('swaync')
 
 end, { one_shot = true })
 
