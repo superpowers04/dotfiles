@@ -8,18 +8,19 @@
     // Choose the order of the modules
     "modules-left": [
         "tray",
-        "sway/workspaces",
-        "dwl/tags",
+        "wlr/taskbar",
+        "dwl/window"
         // "dwl/taskbar",
         // "wlr/workspaces",
         // "hyprland/workspaces",
         // "hyprland/mode",
-        "wlr/taskbar"
+        
         // "sway/scratchpad"
         // "custom/media"
     ],
     "modules-center": [
-        "dwl/window"
+        "dwl/tags"
+        
     ],
     "modules-right": [
         // "mpd",
@@ -40,41 +41,36 @@
         "custom/close"
     ],
     // Modules configuration
-    // "sway/workspaces": {
-    //     "disable-scroll": true,
-    //     "all-outputs": true,
-    //     "warp-on-scroll": false,
-    //     "format": "{name}: {icon}",
-    //     "format-icons": {
-    //         "1": "",
-    //         "2": "",
-    //         "3": "",
-    //         "4": "",
-    //         "5": "",
-    //         "urgent": "",
-    //         "focused": "",
-    //         "default": ""
-    //     }
-    // },
+    "sway/workspaces": {
+        // "disable-scroll": true,
+        "all-outputs": false,
+        // "warp-on-scroll": false,
+        "format": "{icon}{value}{icon}",
+        "format-icons": {
+            "urgent": "!",
+            "focused": "",
+            "default": ""
+        }
+    },
     "dwl/tags": {
     	"tag-labels":[
     		"1","2","3","4","5","6","7","8","9",
     	],
         "tooltip": true,
-        // "tooltip-format": "hi" 
+        // "tooltip-format": "hi"
     },
     "keyboard-state": {
         "numlock": true,
         "capslock": true,
-        "format": "{name} {icon}",
+        "format": "{name}{icon}",
         "format-icons": {
-            "locked": "",
-            "unlocked": ""
+            "locked": "☒",
+            "unlocked": "☐"
         }
     },
-    "sway/mode": {
-        "format": "<span style=\"italic\">{}</span>"
-    },
+    // "sway/mode": {
+    //     "format": "<span style=\"italic\">{}</span>"
+    // },
     "sway/scratchpad": {
         "format": "{icon} {count}",
         "show-empty": false,
@@ -119,9 +115,10 @@
         // "icon-size": 21,
         "spacing": 10
     },
+
     "clock": {
         // "timezone": "America/New_York",
-        "format": "{:%x %H:%M}",
+        "format": "{:%m/%d %H:%M}",
         "tooltip-format": "<big>{:%H:%M %DDD}</big>\n<tt><small>{calendar}</small></tt>",
         "format-alt": "{:%Y-%m-%d}"
     },
@@ -130,7 +127,7 @@
         // "tooltip": false
     },
     "memory": {
-        "format": "Mem: {used:0.1f}G/{total:0.1f}G",
+        "format": "Mem: {used:0.1f}G",
     },
     "temperature": {
         // "thermal-zone": 2,
@@ -221,7 +218,7 @@
     },
     "custom/close": {
         "format" : "|X|",
-        "on-click":"cwctl -c 'cwc.client.focused():close()'"
+        "on-click":"swaymsg kill"
 		// "tooltip": false,
     },
     "custom/maximize": {
@@ -231,7 +228,8 @@
     },
     "custom/floating": {
         "format" : "|^|",
-        "on-click":"cwctl -c 'local c = cwc.client.focused(); c.floating = not c.floating'"
+        "on-click":"swaymsg floating toggle",
+        "tooltip-format": "Discord"
 		// "tooltip": false,
     },
     "custom/swaync": {
@@ -261,6 +259,6 @@
 	},
 	"hyprland/window": {
     "separate-outputs": true
-},
+}
 
 }

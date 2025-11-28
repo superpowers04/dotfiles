@@ -10,7 +10,7 @@
 
 -- TODO ADD MARKUP AFTER INSTEAD OF DURING
 -- TODO HISTORY
--- TOD FAVS
+-- TODO FAVS
 
 local module = {
 	output = "",
@@ -134,15 +134,6 @@ local help = [[Usage:
  (NAME)[ (ID)]
 Shortcuts:]]
 
-
-local menu_contents = io.open(module.MenuFolder..'/menu_contents.lua')
-local old_menu = {}
-if menu_contents then 
-	local succ,err = pcall(function()
-		old_menu = load(menu_contents:read('*a'))()
-	end)
-	menu_contents:close()
-end
 module.commands = {}
 local function generate_help(cmds)
 	cmds = cmds or module.commands
@@ -154,7 +145,7 @@ local function generate_help(cmds)
 end
 
 local recents = {}
-local list, cached_list, exelist, paths, runable = {}, {}, {}, {""},false
+local list, cached_list, exelist, paths, runable, custom_list = {}, {}, {}, {""}, false, {}
 local home_dir = os.getenv('HOME')
 if(appmenuList) then
 	cached_list = appmenuList
@@ -166,12 +157,11 @@ else
 			local chunk,err = load(cache:read('*a'))
 			if not chunk then error(err) end
 			local tbl = chunk()
-			list, cached_list, exelist, paths = tbl.list,tbl.cached_list,tbl.exelist,tbl.paths
+			cached_list, exelist, paths = tbl.cached_list,tbl.exelist,tbl.paths
 			cache:close()
 		end)
 		if not succ or not list or not paths then print('Error while trying to load cached list',err or "list not found", " - Regenerating config") end
-	end
-	if not cache then
+	else
 		local desktop_file_dirs = {
 			home_dir.."/.local/share/applications",
 			'/usr/share/applications'
@@ -214,7 +204,6 @@ else
 								elm[1] = genericName
 							else
 								elm.gn = genericName
-
 							end
 						end
 						local description = content:match('Comment=([^\n]+)') or content:match('Description=([^\n]+)')
@@ -227,7 +216,19 @@ else
 				end
 			end
 		end
-		table.sort(list,function(a,b) return #a[1] > #b[1] end)
+		local custom_list_file = io.open(module.MenuFolder..'/custom_list.lua')
+		if(custom_list_file) then
+			local succ,err = pcall(function()
+				local chunk,err = load(custom_list_file:read('*a'))
+				if not chunk then error(err) end
+				for i,v in pairs(chunk()) do
+					table.insert(cached_list,1,v)
+				end
+				custom_list_file:close()
+			end)
+			if not succ then print('Error while trying to load custom list',err or "custom list") end
+		end
+		-- table.sort(list,function(a,b) return #a[1] > #b[1] end)
 		table.sort(cached_list,function(a,b) return #a[1] > #b[1] end)
 		do
 			local proc = io.popen('flatpak list --app | cat','r')
@@ -242,7 +243,7 @@ else
 		end
 		cache = io.open(module.cacheFile,'w')
 		cache:write(('return %s'):format(_tostring({
-			list = list,
+			-- list = list,
 			cached_list = cached_list,
 			exelist = exelist,
 			paths = paths
@@ -349,6 +350,9 @@ function module.updateInput(input)
 				end
 				module.set_text(('%s - %s'):format(cmd[1],cmd[2]))
 				if(cmd.get_list) then
+					if(cmd.top_text) then
+						module.top_text = cmd.top_text
+					end
 					input,list_to_search = cmd:get_list(input)
 					break;
 				elseif cmd.update_text then
@@ -658,7 +662,16 @@ module.commands = {
 	},--]] 
 	{"m","Menu",starts_with="m ",
 		get_list=function(self,input)
-
+			if not self.menu_contents then
+				local menu_contents_file = io.open(module.MenuFolder..'/menu_contents.lua')
+				self.menu_contents = {}
+				if menu_contents_file then 
+					local succ,err = pcall(function()
+						self.menu_contents = load(menu_contents_file:read('*a'))()
+					end)
+					menu_contents_file:close()
+				end
+			end
 			local list= {}
 			local recurse
 			recurse = function(l,str)
@@ -673,7 +686,7 @@ module.commands = {
 				end
 			end
 
-			recurse(old_menu,"")
+			recurse(self.menu_contents,"")
 			return input:sub(2),list
 		end
 	},
