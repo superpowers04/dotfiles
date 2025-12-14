@@ -134,6 +134,36 @@ output "DP-4" {
     // automatically.
     position x=0 y=0
 }
+output "DP-3" {
+    // Uncomment this line to disable this output.
+    // off
+
+    // Resolution and, optionally, refresh rate of the output.
+    // The format is "<width>x<height>" or "<width>x<height>@<refresh rate>".
+    // If the refresh rate is omitted, niri will pick the highest refresh rate
+    // for the resolution.
+    // If the mode is omitted altogether or is invalid, niri will pick one automatically.
+    // Run `niri msg outputs` while inside a niri instance to list all outputs and their modes.
+    mode "1920x1080@240.299"
+
+    // You can use integer or fractional scale, for example use 1.5 for 150% scale.
+    scale 1
+
+    // Transform allows to rotate the output counter-clockwise, valid values are:
+    // normal, 90, 180, 270, flipped, flipped-90, flipped-180 and flipped-270.
+    transform "normal"
+
+    // Position of the output in the global coordinate space.
+    // This affects directional monitor actions like "focus-monitor-left", and cursor movement.
+    // The cursor can only move between directly adjacent outputs.
+    // Output scale and rotation has to be taken into account for positioning:
+    // outputs are sized in logical, or scaled, pixels.
+    // For example, a 3840×2160 output with scale 2.0 will have a logical size of 1920×1080,
+    // so to put another output directly adjacent to it on the right, set its x to 1920.
+    // If the position is unset or results in an overlap, the output is instead placed
+    // automatically.
+    position x=0 y=0
+}
 
 output "HDMI-A-2" {
     // Uncomment this line to disable this output.
@@ -197,7 +227,7 @@ layout {
     // preset-window-heights { }
 
     // You can change the default width of the new windows.
-    default-column-width { proportion 0.5; }
+    default-column-width { proportion 0.9; }
     // If you leave the brackets empty, the windows themselves will decide their initial width.
     // default-column-width {}
 
@@ -366,6 +396,7 @@ window-rule {
     match app-id="swaync"
 
     baba-is-float true
+    open-on-output "HDMI-A-3"
 }
 window-rule {
     match app-id="steam" title=r#"^notificationtoasts_\d+_desktop$"#
@@ -389,6 +420,7 @@ window-rule {
     // - Flatpak Firefox (app-id is "org.mozilla.firefox")
     match app-id=r#"discord$"#
     match app-id=r#"vesktop$"#
+    match app-id=r#"equibop$"#
     block-out-from "screencast"
 }
 // Open the Firefox picture-in-picture player as floating by default.
@@ -678,7 +710,9 @@ binds {
 spawn-at-startup "xwayland-satelite"
 spawn-at-startup "swaync"
 spawn-at-startup "lxqt-policykit-agent"
-spawn-at-startup "systemctl start --user gpg-agent"
+spawn-at-startup "systemctl restart --user gpg-agent"
+spawn-at-startup "systemctl restart --user gnome-keyring-daemon"
+
 environment {
 	DISPLAY ":0"
 	QT_STYLE_OVERRIDE "kvantum"

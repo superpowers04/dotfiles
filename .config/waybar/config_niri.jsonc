@@ -1,13 +1,15 @@
 // -*- mode: jsonc -*-
 {
-    // "layer": "top", // Waybar at top layer
-    // "position": "bottom", // Waybar position (top|bottom|left|right)
+    "layer": "top", // Waybar at top layer
+    "position": "top", // Waybar position (top|bottom|left|right)
     "height": 24, // Waybar height (to be removed for auto height)
     // "width": 1280, // Waybar width
     "spacing": 1, // Gaps between modules (4px)
     // Choose the order of the modules
     "modules-left": [
+        "custom/appmenu",
         "tray",
+
         // "wlr/workspaces",
         // "hyprland/workspaces",
         // "hyprland/mode",
@@ -60,7 +62,8 @@
         "format-icons": {
             "locked": "☒",
             "unlocked": "☐"
-        }
+        },
+        "on-click":"wf-osk",
     },
     "wlr/taskbar": {
         "on-click": "activate",
@@ -230,6 +233,12 @@
     "custom/maximize": {
         "format" : "[=]",
         "on-click":"cwctl -c 'cwc.client.focused():maximize()'"
+		// "tooltip": false,
+    },
+    "custom/appmenu": {
+        "format" : "|APPS|",
+        "on-click":"luajit /home/steph/SRC/dotfiles/lua/appmenuGtk.lua",
+        "tooltip-format": ""
 		// "tooltip": false,
     },
     "custom/floating": {
