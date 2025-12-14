@@ -31,7 +31,7 @@
         "memory",
         "temperature",
         "keyboard-state",
-        "custom/kbd"
+        "custom/kbd",
         "clock",
         "battery",
         "custom/swaync",
