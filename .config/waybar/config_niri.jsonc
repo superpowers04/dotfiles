@@ -32,6 +32,7 @@
         "temperature",
         "keyboard-state",
         "clock",
+        "battery",
         "custom/swaync",
         // "custom/floating",
         "custom/close"
@@ -63,7 +64,7 @@
             "locked": "☒",
             "unlocked": "☐"
         },
-        "on-click":"wf-osk",
+        "on-click":"wvkbd-deskintl || wf-osk",
     },
     "wlr/taskbar": {
         "on-click": "activate",
@@ -230,21 +231,10 @@
         "on-click":"swaymsg kill"
 		// "tooltip": false,
     },
-    "custom/maximize": {
-        "format" : "[=]",
-        "on-click":"cwctl -c 'cwc.client.focused():maximize()'"
-		// "tooltip": false,
-    },
     "custom/appmenu": {
         "format" : "|APPS|",
-        "on-click":"luajit /home/steph/SRC/dotfiles/lua/appmenuGtk.lua",
+        "on-click":"luajit ~/SRC/dotfiles/lua/appmenuGtk.lua",
         "tooltip-format": ""
-		// "tooltip": false,
-    },
-    "custom/floating": {
-        "format" : "|^|",
-        "on-click":"swaymsg floating toggle",
-        "tooltip-format": "Discord"
 		// "tooltip": false,
     },
     "custom/swaync": {
