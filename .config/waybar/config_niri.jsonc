@@ -228,7 +228,7 @@
     },
     "custom/close": {
         "format" : "|X|",
-        "on-click":"swaymsg kill"
+        "on-click":"niri msg action close-window"
 		// "tooltip": false,
     },
     "custom/kbd": {
