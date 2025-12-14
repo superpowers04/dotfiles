@@ -233,7 +233,7 @@
     },
     "custom/kbd": {
         "format" : "[KBD]",
-        "on-click":"wvkbd-deskintl || wf-osk",
+        "on-click":"killall wf-osk || killall wvkbd-deskintl || wvkbd-deskintl || wf-osk",
         "tooltip-format": ""
 		// "tooltip": false,
     },
