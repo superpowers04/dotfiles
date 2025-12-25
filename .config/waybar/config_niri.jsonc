@@ -20,7 +20,7 @@
         // "custom/media"
     ],
     "modules-center": [
-        "wlr/taskbar"
+        "cffi/niri-taskbar"
     ],
     "modules-right": [
         "mpris",
@@ -243,6 +243,9 @@
         "tooltip-format": ""
 		// "tooltip": false,
     },
+      "cffi/niri-taskbar": {
+	    "module_path": "/usr/lib/waybar/libniri_taskbar.so",
+	  },
     "custom/swaync": {
 	    "tooltip": false,
 	    "format": "{icon}",

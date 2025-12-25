@@ -12,6 +12,31 @@
 local Module_Location = os.getenv('HOME')..'/SRC/dotfiles/lua/appmenuBase.lua'
 
 arg = arg or args
+-- Flag parsing
+local flags = {
+	keepopen=true
+}
+
+for i,v in pairs(arg) do
+	if(v:sub(1,2) == "--") then
+		flags[v:sub(3):lower()] = true
+	elseif(v:sub(1,1) == "-") then
+		for char in v:sub(2):gmatch('.') do
+			flags[char:lower()] = true
+		end
+	elseif(v=="--") then
+		break
+	end
+end
+
+if flags.help or flags.h then
+	print([[appmenuGtk.lua [arguments]
+	--help  - Show this message
+	--keepopen --keep-open -k  - Prevent appmenu from closing after selecting an option
+	--cache  - Run appmenuBase to cache desktop files and exit
+]])
+	return
+end
 
 -- Load the module first
 local succ,module = pcall(dofile,Module_Location)
@@ -22,10 +47,11 @@ else
 	err = module;module = nil;print(err)
 end
 
-if arg[1] == "--cache" then
+if flags.cache then return end
+if flags["keep-open"] or flags.k then
+	flags.keep_open=true
 	return
 end
-
 
 local appID = "Superpowers04.appmenu.lua"
 local appTitle = "Appmenu" 
@@ -81,17 +107,20 @@ function app:on_startup()
 		[keys.up] = module.key_functions.up,
 		[keys.down] = module.key_functions.down,
 		[keys.enter] = function()
-			if module.finish(module.text_buffer) == true then return end
+			if module.finish(module.text_buffer) == true or flags.keep_open then return end
+
 			module.exit(0)
 			return true
 		end
 	}
 	module.exit = function(...)
+		if(flags.keep_open) then return end
 		win:destroy()
 		os.exit(...)
 	end
 	module.move_cursor = function(pos) entry:set_position(pos); end
 	win.on_focus_out_event=function()
+		if(flags.keep_open) then return end
 		win:destroy()
 	end
 	win.on_key_press_event = function(self,key)
