@@ -227,7 +227,7 @@ layout {
     // preset-window-heights { }
 
     // You can change the default width of the new windows.
-    default-column-width { proportion 0.9; }
+    default-column-width { proportion 0.98; }
     // If you leave the brackets empty, the windows themselves will decide their initial width.
     // default-column-width {}
 
@@ -569,13 +569,15 @@ binds {
     // To avoid scrolling through workspaces really fast, you can use
     // the cooldown-ms property. The bind will be rate-limited to this value.
     // You can set a cooldown on any bind, but it's most useful for the wheel.
-    Mod+Shift+WheelScrollDown      cooldown-ms=150 { focus-workspace-down; }
-    Mod+Shift+WheelScrollUp        cooldown-ms=150 { focus-workspace-up; }
-    Mod+Ctrl+Shift+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
-    Mod+Ctrl+Shift+WheelScrollUp   cooldown-ms=150 { move-column-to-workspace-up; }
+    Mod+Alt+WheelScrollDown      cooldown-ms=150 { focus-workspace-down; }
+    Mod+Alt+WheelScrollUp        cooldown-ms=150 { focus-workspace-up; }
+    Mod+Ctrl+Alt+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
+    Mod+Ctrl+Alt+WheelScrollUp   cooldown-ms=150 { move-column-to-workspace-up; }
 
-    Mod+WheelScrollDown      { focus-column-right; }
-    Mod+WheelScrollUp       { focus-column-left; }
+    Mod+Shift+WheelScrollDown      { set-column-width "-5%"; }
+    Mod+Shift+WheelScrollUp       { set-column-width "+5%"; }
+    Mod+WheelScrollDown allow-inhibiting=false { focus-column-right; }
+    Mod+WheelScrollUp allow-inhibiting=false  { focus-column-left; }
     Mod+Ctrl+WheelScrollDown { move-column-right; }
     Mod+Ctrl+WheelScrollUp  { move-column-left; }
 
@@ -679,9 +681,9 @@ binds {
     // Mod+Space       { switch-layout "next"; }
     // Mod+Shift+Space { switch-layout "prev"; }
 
-    Print { screenshot; }
-    Ctrl+Print { screenshot-screen; }
-    Alt+Print { screenshot-window; }
+    Print allow-inhibiting=false { screenshot; }
+    Ctrl+Print allow-inhibiting=false { screenshot-screen; }
+    Alt+Print allow-inhibiting=false { screenshot-window; }
 
     // Applications such as remote-desktop clients and software KVM switches may
     // request that niri stops processing the keyboard shortcuts defined here
@@ -700,11 +702,27 @@ binds {
 
     // Powers off the monitors. To turn them back on, do any input like
     // moving the mouse or pressing any other key.
-    Mod+Shift+P { power-off-monitors; }
-    Mod+R { spawn "bash" "-c" "killall waybar;waybar -c '/home/steph/SRC/dotfiles/.config/waybar/config_niri.jsonc'"; }
-    Alt+Space { spawn "luajit" "/home/steph/SRC/dotfiles/lua/appmenuGtk.lua"; }
-	Mod+Y {spawn "bash" "-c" "wlr-randr --output HDMI-A-1 --custom 1920x1080@73 && wlr-randr --output HDMI-A-2 --below HDMI-A-1";}
-	Mod+shift+Y {spawn "bash" "-c" "wlr-randr --output HDMI-A-1 --custom 1280x720@75 && wlr-randr --output HDMI-A-2 --below HDMI-A-1";}
+    Mod+Shift+P repeat=false { power-off-monitors; }
+    Mod+R repeat=false { spawn "bash" "-c" "killall waybar;waybar -c '/home/steph/SRC/dotfiles/.config/waybar/config_niri.jsonc'"; }
+    Mod+Shift+R repeat=false { spawn "xterm" "-e" "niri validate;read"; }
+    Alt+Space repeat=false allow-inhibiting=false { spawn "luajit" "/home/steph/SRC/dotfiles/lua/appmenuGtk.lua"; }
+
+
+
+
+
+
+    Mod+KP_1 allow-inhibiting=false repeat=false { spawn "subl"; }
+    Mod+KP_2 allow-inhibiting=false repeat=false { spawn "vesktop"; }
+    Mod+KP_3 allow-inhibiting=false repeat=false { spawn "vivaldi"; }
+    Mod+KP_4 allow-inhibiting=false repeat=false { spawn "nemo"; }
+    Mod+KP_5 allow-inhibiting=false repeat=false { spawn "xfce4-terminal"; }
+    Mod+KP_6 allow-inhibiting=false repeat=false { spawn "steam"; }
+    
+    Mod+Y { spawn "niri" "msg" "output" "DP-4" "custom-mode" "1920x1080@165.002"; }
+    Mod+Shift+Y { spawn "niri" "msg" "output" "DP-4" "custom-mode" "1920x1080@240.299"; }
+	// Mod+Y {spawn "bash" "-c" "wlr-randr --output HDMI-A-1 --custom 1920x1080@73 && wlr-randr --output HDMI-A-2 --below HDMI-A-1";}
+	// Mod+shift+Y {spawn "bash" "-c" "wlr-randr --output HDMI-A-1 --custom 1280x720@75 && wlr-randr --output HDMI-A-2 --below HDMI-A-1";}
 }
 
 spawn-at-startup "xwayland-satelite"
@@ -712,6 +730,10 @@ spawn-at-startup "swaync"
 spawn-at-startup "lxqt-policykit-agent"
 spawn-at-startup "systemctl restart --user gpg-agent"
 spawn-at-startup "systemctl restart --user gnome-keyring-daemon"
+spawn-at-startup "niri msg output winit custom-mode 1920x1080@240.299"
+debug {
+	honor-xdg-activation-with-invalid-serial
+}
 
 environment {
 	DISPLAY ":0"

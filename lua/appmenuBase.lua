@@ -149,7 +149,7 @@ local list, cached_list, exelist, paths, runable, custom_list = {}, {}, {}, {""}
 local home_dir = os.getenv('HOME')
 if(appmenuList) then
 	cached_list = appmenuList
-	module.dmenu_mode = true
+	if not module.dmenu_mode then module.dmenu_mode = true end
 else
 	local cache = io.open(module.cacheFile,'r')
 	if(cache) then
@@ -911,7 +911,10 @@ module._update_cursor_pos = function()
 	end
 end
 module.set_text = function(txt,plain)
-	if(txt == nil) then txt = generate_help();plain = false end
+	if(txt == nil) then 
+		txt = module.dmenu_mode and ('Running in dmenu mode; ' .. tostring(module.dmenu_mode)) or generate_help()
+		plain = false
+	end
 	txt = module.top_text..tostring(txt)..module.bottom_text
 	local lp = ('-'):rep(math.floor(module.locked_char_width))
 	-- '|'..(' '):rep(math.floor(module.locked_char_width-1))..'|'
@@ -929,8 +932,25 @@ end
 
 module.finish = function(input)
 	if not input or #input == 0 then return end
+	local runable=module.runable
+	-- print(runable)
 	if(module.dmenu_mode) then
-		io.stdout:write(input)
+		if(module.dmenu_mode:find('~%d+$')) then
+			local a = tonumber(module.dmenu_mode)
+			io.stdout:write(runable[a] or runable[1])
+		elseif(type(module.dmenu_mode) == "string") then
+			local dmenu_mode = module.dmenu_mode:lower():gsub('_','')
+			if(dmenu_mode == 'option') then
+				io.stdout:write(runable[2] or runable[1])
+			elseif(dmenu_mode == 'all') then
+				io.stdout:write(input..'\n'..table.concat(runable,'\n'))
+			elseif(dmenu_mode == 'aspassed') then
+				io.stdout:write(table.concat(runable,';'))
+
+			end
+		else
+			io.stdout:write(input)
+		end
 		module.exit()
 		return input
 	end
@@ -938,8 +958,6 @@ module.finish = function(input)
 	-- 	preset = naughty.config.presets.normal,
 	-- 	title = 'Input was ' .. input
 	-- })
-	local runable=module.runable
-	print(runable)
 	for i,cmd in pairs(module.commands) do
 		if((cmd.starts_with and input:sub(1,#cmd.starts_with) ==cmd.starts_with) or cmd.match and input:find(cmd.match)) then
 			executables=false

@@ -13,19 +13,23 @@ local Module_Location = os.getenv('HOME')..'/SRC/dotfiles/lua/appmenuBase.lua'
 
 arg = arg or args
 -- Flag parsing
-local flags = {
-	keepopen=true
-}
-
-for i,v in pairs(arg) do
-	if(v:sub(1,2) == "--") then
-		flags[v:sub(3):lower()] = true
-	elseif(v:sub(1,1) == "-") then
-		for char in v:sub(2):gmatch('.') do
-			flags[char:lower()] = true
+local flags = {}
+do
+	for i,v in pairs(arg) do
+		if(v == "--dmenu") then
+			flags.dmenu = i
+			break
+		elseif(v:sub(1,2) == "--") then
+			local k,v = v:match('--(.-)=(.+)')
+			flags[v:sub(3):lower()] = true
+			flags[v:sub(3):lower()] = true
+		elseif(v:sub(1,1) == "-") then
+			for char in v:sub(2):gmatch('.') do
+				flags[char:lower()] = true
+			end
+		elseif(v=="--") then
+			break
 		end
-	elseif(v=="--") then
-		break
 	end
 end
 
@@ -34,9 +38,34 @@ if flags.help or flags.h then
 	--help  - Show this message
 	--keepopen --keep-open -k  - Prevent appmenu from closing after selecting an option
 	--cache  - Run appmenuBase to cache desktop files and exit
+	--dmenu-output=[option|input|all|asPassed]  - Selects how to output selection. 
+		Defaults to "option". 
+		- Option will print the second ; seperated value or the first one if no second value is present
+		- All will print the input, and then every ; seperated value split by newlines
+		- asPassed will print the option as it was passed to the script
+	--dmenu  - Run appmenuBase as a dmenu replacement, All arguments after --dmenu will be treated as options(Not entirely compatible)
 ]])
 	return
 end
+
+if flags.dmenu then
+	appmenuList = {}
+	local flagged = false
+	local index = 0
+	for i,opt in pairs(arg) do
+		if(flagged) then
+			index=index+1
+			local tbl = {}
+			appmenuList[index] = tbl
+			for str in opt:gmatch('[^;]+') do
+				tbl[#tbl+1]=str
+			end
+		elseif(opt == "--dmenu") then
+			flagged = true
+		end
+	end
+end
+
 
 -- Load the module first
 local succ,module = pcall(dofile,Module_Location)
@@ -52,6 +81,8 @@ if flags["keep-open"] or flags.k then
 	flags.keep_open=true
 	return
 end
+
+module.dmenu_mode = flags.dmenu and flags['dmenu-output'] or flags.dmenu and "option"
 
 local appID = "Superpowers04.appmenu.lua"
 local appTitle = "Appmenu" 
