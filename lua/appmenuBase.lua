@@ -494,14 +494,17 @@ function module.updateInput(input)
 			end
 			list = locked_order_list
 			-- TODO FIX SORTING, SORTING SHOULD BE BY LENGTH OF MATCHED CHARACTERS, NOT THE FIRST </b> TAG
-			pcall(function()
+			local succ,err = pcall(function()
 				local compFunc = function(a,b) 
 					return a:match('<b>.-</b>') < b:match('<b>.-</b>')
 				end
-				table.sort(fullWord,function(a,b) return a:find('</b>') > b:find('</b>') end) 
+				table.sort(fullWord,function(a,b) return (a:find('</b>') < b:find('</b>')) end) 
 				table.sort(wordparts,compFunc) 
 			end)
-			for i,v in ipairs(fullWord) do list[#list+1] = v end
+			if not succ then print('error sorting',err) end
+			for i,v in ipairs(fullWord) do 
+				list[#list+1] = v
+			end
 			for i,v in ipairs(wordparts) do list[#list+1] = v end
 		else
 			local lol_index = #locked_order_list

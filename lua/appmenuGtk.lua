@@ -20,9 +20,12 @@ do
 			flags.dmenu = i
 			break
 		elseif(v:sub(1,2) == "--") then
-			local k,v = v:match('--(.-)=(.+)')
-			flags[v:sub(3):lower()] = true
-			flags[v:sub(3):lower()] = true
+			local key,val = v:match('--(.-)=(.+)')
+			if(key) then
+				flags[key:lower()] = val
+			else
+				flags[v:sub(3):lower()] = true
+			end
 		elseif(v:sub(1,1) == "-") then
 			for char in v:sub(2):gmatch('.') do
 				flags[char:lower()] = true
@@ -38,6 +41,7 @@ if flags.help or flags.h then
 	--help  - Show this message
 	--keepopen --keep-open -k  - Prevent appmenu from closing after selecting an option
 	--cache  - Run appmenuBase to cache desktop files and exit
+	--from-clipboard -c  - Pulls input from clipboard 
 	--dmenu-output=[option|input|all|asPassed]  - Selects how to output selection. 
 		Defaults to "option". 
 		- Option will print the second ; seperated value or the first one if no second value is present
@@ -45,6 +49,9 @@ if flags.help or flags.h then
 		- asPassed will print the option as it was passed to the script
 	--dmenu  - Run appmenuBase as a dmenu replacement, All arguments after --dmenu will be treated as options(Not entirely compatible)
 ]])
+	for i,v in pairs(flags) do
+		print(v==true and ('Passed '..i) or ("Passed "..i..'='..v))
+	end
 	return
 end
 
@@ -83,6 +90,9 @@ if flags["keep-open"] or flags.k then
 end
 
 module.dmenu_mode = flags.dmenu and flags['dmenu-output'] or flags.dmenu and "option"
+module['from-clipboard'] = flags.c or flags['from-clipboard']
+
+if(_PVERSION) then print('Pluto doesn\'t work correctly with lgi so a crash might come up') end
 
 local appID = "Superpowers04.appmenu.lua"
 local appTitle = "Appmenu" 
@@ -127,9 +137,8 @@ function app:on_startup()
 		entry.text = module.text_buffer
 		label.label = output
 	end
-
-	module.updateInput("")
 	module.set_text()
+	module.updateInput(flags["from-clipboard"] and module.getClipboard() or "")
 	entry:grab_focus()
 
 

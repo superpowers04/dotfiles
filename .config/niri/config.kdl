@@ -569,15 +569,17 @@ binds {
     // To avoid scrolling through workspaces really fast, you can use
     // the cooldown-ms property. The bind will be rate-limited to this value.
     // You can set a cooldown on any bind, but it's most useful for the wheel.
-    Mod+Alt+WheelScrollDown      cooldown-ms=150 { focus-workspace-down; }
-    Mod+Alt+WheelScrollUp        cooldown-ms=150 { focus-workspace-up; }
-    Mod+Ctrl+Alt+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
-    Mod+Ctrl+Alt+WheelScrollUp   cooldown-ms=150 { move-column-to-workspace-up; }
+    // Mod+Alt+WheelScrollDown      cooldown-ms=150 { focus-workspace-down; }
+    // Mod+Alt+WheelScrollUp        cooldown-ms=150 { focus-workspace-up; }
+    // Mod+Ctrl+Alt+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
+    // Mod+Ctrl+Alt+WheelScrollUp   cooldown-ms=150 { move-column-to-workspace-up; }
 
     Mod+Shift+WheelScrollDown      { set-column-width "-5%"; }
     Mod+Shift+WheelScrollUp       { set-column-width "+5%"; }
     Mod+WheelScrollDown allow-inhibiting=false { focus-column-right; }
     Mod+WheelScrollUp allow-inhibiting=false  { focus-column-left; }
+    Mod+Alt+WheelScrollUp allow-inhibiting=false  { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.025+";  }
+    Mod+Alt+WheelScrollDown allow-inhibiting=false { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.025-";  }
     Mod+Ctrl+WheelScrollDown { move-column-right; }
     Mod+Ctrl+WheelScrollUp  { move-column-left; }
 
@@ -706,6 +708,7 @@ binds {
     Mod+R repeat=false { spawn "bash" "-c" "killall waybar;waybar -c '/home/steph/SRC/dotfiles/.config/waybar/config_niri.jsonc'"; }
     Mod+Shift+R repeat=false { spawn "xterm" "-e" "niri validate;read"; }
     Alt+Space repeat=false allow-inhibiting=false { spawn "luajit" "/home/steph/SRC/dotfiles/lua/appmenuGtk.lua"; }
+    Mod+Alt+Space repeat=false allow-inhibiting=false { spawn "luajit" "/home/steph/SRC/dotfiles/lua/appmenuGtk.lua" "--from-clipboard"; }
 
 
 
@@ -731,6 +734,7 @@ spawn-at-startup "lxqt-policykit-agent"
 spawn-at-startup "systemctl restart --user gpg-agent"
 spawn-at-startup "systemctl restart --user gnome-keyring-daemon"
 spawn-at-startup "niri msg output winit custom-mode 1920x1080@240.299"
+spawn-at-startup "/usr/bin/swayidle -w timeout 601 'niri msg action power-off-monitors' timeout 600 'swaylock -f' before-sleep 'swaylock -f'"
 debug {
 	honor-xdg-activation-with-invalid-serial
 }
