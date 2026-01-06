@@ -1,4 +1,5 @@
 #!/bin/lua
+-- Programmed and stuff by superpowers04
 help=
 [[Usage: "gmrun.lua (ARGUMENTS) -- (COMMAND)" 
 A wrapper for the gamemoderun wrapper to add support for supplying environment variables and some other utilities without needing to supply the same command to a bunch of games and keep said commands up to date
