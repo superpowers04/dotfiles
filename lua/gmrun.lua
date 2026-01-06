@@ -158,7 +158,7 @@ end
 
 if(flags.xwayland) then
 	local cmd = (
-		flags.wine and ini.xwayland_proton_command
+		flags.wine and ini.xwayland_wine_command
 		or flags.native and ini.xwayland_native_command
 		or ini.xwayland_command
 		or 'xwayland-run :5'
