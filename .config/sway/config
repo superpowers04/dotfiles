@@ -268,15 +268,17 @@ exec /usr/lib/xdg-desktop-portal-wlr
 
 client.focused #773366 #773366 #aa33ff #773366
 
-set $top HDMI-A-2
-set $bot DP-4
+set $top DP-4
+set $bot HDMI-A-2
 
 
 
 input type:tablet_tool {
     map_to_output $bot
 }
-exec_always wlr-randr --output $top --custom 1920x1080@73 && wlr-randr --output $bot --custom 1920x1080@73 --below $top
+
+
+exec_always wlr-randr --output $top --custom 1920x1080@240 && wlr-randr --output $bot --custom 1920x1080@73 --below $top
 bindsym $mod+u exec wlr-randr --output $top --custom 1920x1080@73 && wlr-randr --output $bot --custom 1920x1080@73 --below $top
 bindsym $mod+shift+u exec wlr-randr --output $top --custom 1280x720@75 && wlr-randr --output $bot --custom 1280x720@75 --below $top
 bindsym $mod+control+u exec wlr-randr --output $top --custom 1280x720@60 && wlr-randr --output $bot --custom 1280x720@60  --below $top
